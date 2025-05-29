@@ -1,2 +1,2 @@
-# career_compass_content_engine
+# Career Compass AI - Content Engine
 This is the primary workflow for producing Career Compass blog content
