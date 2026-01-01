@@ -6,4 +6,5 @@ Switching industries does not mean resetting your career. At Career Compass we h
 - Inventory your portable skills and quantify their impact.
 - Match your story to the language of your target industry.
 - Prototype the leap with low-stakes projects and informational interviews.
+
 - Close skill gaps with focused learning sprints and accountability.

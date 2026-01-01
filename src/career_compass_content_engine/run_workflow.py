@@ -4,7 +4,9 @@ from pathlib import Path
 
 from .agents.base import AgentContext
 from .config import get_settings
+
 from .rag import EXAMPLES_DIR, SUPPORTED_SUFFIXES, _read_text
+
 from .supervisor import Supervisor
 
 
@@ -18,6 +20,7 @@ def load_existing_content() -> str:
             content = _read_text(path)
             if content:
                 snippets.append(content)
+
     return "\n\n".join(snippets)
 
 
