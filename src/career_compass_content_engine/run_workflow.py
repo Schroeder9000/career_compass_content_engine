@@ -4,14 +4,23 @@ from pathlib import Path
 
 from .agents.base import AgentContext
 from .config import get_settings
+
+from .rag import EXAMPLES_DIR, SUPPORTED_SUFFIXES, _read_text
+
 from .supervisor import Supervisor
 
 
 def load_existing_content() -> str:
-    examples_dir = Path(__file__).parent / "data" / "examples" / "text"
+    """Load textual examples to give the research agent brand context."""
+
+    text_dir = EXAMPLES_DIR / "text"
     snippets = []
-    for path in sorted(examples_dir.glob("*.md")):
-        snippets.append(path.read_text())
+    for path in sorted(text_dir.rglob("*")):
+        if path.is_file() and path.suffix.lower() in SUPPORTED_SUFFIXES:
+            content = _read_text(path)
+            if content:
+                snippets.append(content)
+
     return "\n\n".join(snippets)
 
 

@@ -23,7 +23,7 @@ Multi-agent workflow for producing Career Compass blog content with OpenAI + Lan
    ```bash
    pip install -r requirements.txt
    ```
-3. Create a `.env` file with the following variables:
+3. Copy `.env.example` to `.env` and populate:
    ```bash
    OPENAI_API_KEY=...
    WEBFLOW_API_TOKEN=...            # optional until ready to publish
@@ -31,7 +31,8 @@ Multi-agent workflow for producing Career Compass blog content with OpenAI + Lan
    WEBFLOW_COLLECTION_ID=...        # optional
    MODAL_SECRET_NAME=career-compass-secrets  # optional if using Modal secrets
    ```
-4. Add prior blog samples to `src/career_compass_content_engine/data/examples/text/` (Markdown). Add visual references or prompts to `data/examples/images/`.
+4. Add prior blog samples to `src/career_compass_content_engine/data/examples/text/` and visual prompts/alt-text to `data/examples/images/`. Supported file types: `.md`, `.txt`, `.json`.
+   - RAG ingest automatically reads both folders, so drop in representative copy and image prompt JSON/Markdown to keep tone and visuals consistent.
 
 ## Running locally
 ```bash
