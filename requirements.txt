@@ -1,0 +1,9 @@
+openai>=1.35.0
+langchain>=0.2.7
+langchain-openai>=0.1.16
+langchain-community>=0.2.7
+faiss-cpu>=1.8.0
+modal>=0.62.0
+pydantic>=2.7.3
+python-dotenv>=1.0.1
+requests>=2.32.3
