@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import hashlib
 import json
 import mimetypes
@@ -9,6 +10,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 
 import requests
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -127,6 +129,7 @@ class WebflowCMS:
         return resp.json()
 
 
+
 PUBLISH_TEMPLATE = """
 You are the publishing QA agent for Career Compass.
 Review the blog content and summarize publishing metadata.
@@ -197,3 +200,4 @@ class PublishingAgent(BaseAgent):
             return {"status": "error", "reason": f"Webflow CMS create failed: {exc}"}
 
         return {"status": "success", "webflow_item": response}
+

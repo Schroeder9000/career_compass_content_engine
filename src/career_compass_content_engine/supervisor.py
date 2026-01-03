@@ -69,13 +69,7 @@ class Supervisor:
 
         metadata_result = self.publisher.prepare_metadata(blog_content)
         metadata_payload = _safe_parse(metadata_result.raw_response)
-        publish_result = self.publisher.upload_to_webflow(
-            metadata_payload,
-            blog_content,
-            image_url=image_plan.get("image_url"),
-            image_file_path=image_plan.get("image_file_path"),
-            thumb_image_url=image_plan.get("thumbnail_url"),
-        )
+        publish_result = self.publisher.upload_to_webflow(metadata_payload, blog_content, image_plan.get("image_url"))
 
         return WorkflowResult(
             research=research_payload,

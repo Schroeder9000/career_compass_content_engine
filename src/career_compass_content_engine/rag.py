@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+
 from typing import Iterable, List
 
 from langchain.docstore.document import Document
+
 from langchain_community.vectorstores import FAISS
 from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 
 EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
+
 SUPPORTED_SUFFIXES = {".md", ".txt", ".json"}
+
 
 
 @dataclass
@@ -25,6 +29,7 @@ class RAGPipeline:
     def from_examples(cls, examples_dir: Path | None = None) -> "RAGPipeline":
         directory = examples_dir or EXAMPLES_DIR
         text_dir = directory / "text"
+
         image_dir = directory / "images"
 
         text_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +49,6 @@ class RAGPipeline:
         if not results:
             return ""
         return "\n\n".join(doc.page_content for doc in results)
-
 
 def _load_documents(directories: Iterable[Path]) -> List[Document]:
     documents: List[Document] = []
@@ -68,3 +72,4 @@ def _read_text(path: Path) -> str:
         except UnicodeDecodeError:
             return ""
     return ""
+
