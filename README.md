@@ -29,6 +29,8 @@ Multi-agent workflow for producing Career Compass blog content with OpenAI + Lan
    WEBFLOW_API_TOKEN=...            # optional until ready to publish
    WEBFLOW_SITE_ID=...              # optional
    WEBFLOW_COLLECTION_ID=...        # optional
+   WEBFLOW_AUTHOR_ID=...            # optional reference field for author
+
    MODAL_SECRET_NAME=career-compass-secrets  # optional if using Modal secrets
    ```
 4. Add prior blog samples to `src/career_compass_content_engine/data/examples/text/` and visual prompts/alt-text to `data/examples/images/`. Supported file types: `.md`, `.txt`, `.json`.

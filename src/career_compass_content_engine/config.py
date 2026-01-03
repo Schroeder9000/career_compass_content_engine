@@ -18,8 +18,10 @@ class Settings:
     webflow_api_token: Optional[str] = None
     webflow_site_id: Optional[str] = None
     webflow_collection_id: Optional[str] = None
+    webflow_author_id: Optional[str] = None
     modal_secret_name: Optional[str] = None
-    base_url: str = "https://api.webflow.com"
+    base_url: str = "https://api.webflow.com/v2"
+
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -28,6 +30,8 @@ class Settings:
             webflow_api_token=os.environ.get("WEBFLOW_API_TOKEN"),
             webflow_site_id=os.environ.get("WEBFLOW_SITE_ID"),
             webflow_collection_id=os.environ.get("WEBFLOW_COLLECTION_ID"),
+            webflow_author_id=os.environ.get("WEBFLOW_AUTHOR_ID"),
+
             modal_secret_name=os.environ.get("MODAL_SECRET_NAME"),
         )
 
