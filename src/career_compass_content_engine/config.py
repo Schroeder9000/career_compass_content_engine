@@ -19,6 +19,7 @@ class Settings:
     webflow_site_id: Optional[str] = None
     webflow_collection_id: Optional[str] = None
     webflow_author_id: Optional[str] = None
+    webflow_category_id: Optional[str] = None
     modal_secret_name: Optional[str] = None
     base_url: str = "https://api.webflow.com/v2"
 
@@ -31,6 +32,7 @@ class Settings:
             webflow_site_id=os.environ.get("WEBFLOW_SITE_ID"),
             webflow_collection_id=os.environ.get("WEBFLOW_COLLECTION_ID"),
             webflow_author_id=os.environ.get("WEBFLOW_AUTHOR_ID"),
+            webflow_category_id=os.environ.get("WEBFLOW_CATEGORY_ID"),
 
             modal_secret_name=os.environ.get("MODAL_SECRET_NAME"),
         )

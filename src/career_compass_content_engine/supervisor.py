@@ -11,6 +11,7 @@ from .agents.image_agent import ImageAgent
 from .agents.publishing_agent import PublishingAgent
 from .agents.research_agent import ResearchAgent
 from .agents.writing_agent import WritingAgent
+from .agents.image_generator import ImageGenerator
 from .config import Settings, get_settings
 from .rag import RAGPipeline
 
@@ -67,9 +68,19 @@ class Supervisor:
         image_result = self.image_agent.design(research_payload, rag_context, context)
         image_plan = _safe_parse(image_result.raw_response)
 
+        # If an image prompt was produced, generate and upload the image locally before publishing
+        image_file_path = None
+        if image_plan and image_plan.get("prompt"):
+            gen = ImageGenerator()
+            try:
+                img_path = gen.generate(image_plan.get("prompt"))
+                image_file_path = str(img_path)
+            except Exception:
+                image_file_path = None
+
         metadata_result = self.publisher.prepare_metadata(blog_content)
         metadata_payload = _safe_parse(metadata_result.raw_response)
-        publish_result = self.publisher.upload_to_webflow(metadata_payload, blog_content, image_plan.get("image_url"))
+        publish_result = self.publisher.upload_to_webflow(metadata_payload, blog_content, image_file_path=image_file_path)
 
         return WorkflowResult(
             research=research_payload,

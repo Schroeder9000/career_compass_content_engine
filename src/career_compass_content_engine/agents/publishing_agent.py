@@ -49,17 +49,43 @@ class WebflowCMS:
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                "accept-version": "1.0.0",
             }
         )
+        # basic retry/backoff config for network resilience
+        self._max_retries = 3
+        self._backoff_factor = 1
+
+    def _request_with_retries(self, method: str, url: str, **kwargs):
+        import time
+
+        last_exc = None
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                resp = self.session.request(method, url, timeout=kwargs.pop("timeout", 60), **kwargs)
+                # treat 5xx and 429 as retryable
+                if resp.status_code >= 500 or resp.status_code == 429:
+                    raise requests.HTTPError(f"Retryable HTTP error {resp.status_code}")
+                return resp
+            except (requests.RequestException, requests.HTTPError) as exc:
+                last_exc = exc
+                if attempt == self._max_retries:
+                    break
+                sleep = self._backoff_factor * (2 ** (attempt - 1))
+                time.sleep(sleep)
+        raise RuntimeError(f"Request to {url} failed after {self._max_retries} attempts: {last_exc}")
 
     def create_asset_metadata(self, site_id: str, file_path: Path) -> Dict[str, Any]:
         file_name = file_path.name
         file_hash = md5_file(file_path)
         url = f"{WEBFLOW_API_BASE}/sites/{site_id}/assets"
         payload = {"fileName": file_name, "fileHash": file_hash}
-        resp = self.session.post(url, data=json.dumps(payload), timeout=60)
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = self._request_with_retries("POST", url, json=payload)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            raise RuntimeError(f"Failed to create asset metadata for {file_name}: {exc}")
 
     def upload_asset(self, site_id: str, file_path: Path) -> Optional[str]:
         metadata = self.create_asset_metadata(site_id, file_path)
@@ -70,16 +96,33 @@ class WebflowCMS:
         if not upload_url:
             return hosted_url
 
-        form_data = upload_details.get("fields", {})
+        # uploadDetails may be either a dict of form fields or contain a 'fields' key.
+        if isinstance(upload_details, dict) and "fields" in upload_details:
+            form_data = upload_details.get("fields", {})
+        else:
+            form_data = upload_details or {}
         mime_type, _ = mimetypes.guess_type(file_path)
         mime_type = mime_type or "application/octet-stream"
 
-        with file_path.open("rb") as f:
-            files = {"file": (file_path.name, f, mime_type)}
-            resp = requests.post(upload_url, data=form_data, files=files, timeout=60)
-            resp.raise_for_status()
+        try:
+            with file_path.open("rb") as f:
+                files = {"file": (file_path.name, f, mime_type)}
+                # upload URL may be an S3 or similar; use requests.post directly but with retries
+                resp = requests.post(upload_url, data=form_data, files=files, timeout=60)
+                resp.raise_for_status()
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to upload asset {file_path.name} to {upload_url}: {exc}")
 
         return hosted_url or metadata.get("fileUrl")
+
+    def get_collection_fields(self, collection_id: str):
+        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}"
+        try:
+            resp = self._request_with_retries("GET", url)
+            resp.raise_for_status()
+            return resp.json().get("fields", [])
+        except Exception as exc:
+            raise RuntimeError(f"Failed to fetch collection {collection_id} fields: {exc}")
 
     def create_draft_blog_item(
         self,
@@ -100,8 +143,10 @@ class WebflowCMS:
         field_slug_author: str = "author",
         field_slug_main_image: str = "main-image",
         field_slug_thumb_image: str = "thumbnail-image",
+        extra_field_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}/items/bulk"
+        # Use the single-item create endpoint for predictable behavior when creating one draft.
+        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}/items"
         payload: Dict[str, Any] = {
             "isArchived": False,
             "isDraft": True,
@@ -123,17 +168,102 @@ class WebflowCMS:
         if author_item_id:
             payload["fieldData"][field_slug_author] = author_item_id
 
-        resp = self.session.post(url, data=json.dumps(payload), timeout=60)
-        if resp.status_code not in (200, 201, 202):
-            raise RuntimeError(f"Create item failed: {resp.status_code} {resp.text}")
-        return resp.json()
+        # merge any extra field data (categories, short summary, tags, etc.)
+        if extra_field_data:
+            payload["fieldData"].update(extra_field_data)
+
+        try:
+            resp = self._request_with_retries("POST", url, json=payload)
+            if resp.status_code not in (200, 201, 202):
+                raise RuntimeError(f"Create item failed: {resp.status_code} {resp.text}")
+            return resp.json()
+        except Exception as exc:
+            raise RuntimeError(f"Failed to create CMS item in collection {collection_id}: {exc}")
 
 
 
 PUBLISH_TEMPLATE = """
-You are the publishing QA agent for Career Compass.
-Review the blog content and summarize publishing metadata.
-Return JSON with keys: title, slug, summary, tags (list), excerpt, and content_ready (boolean).
+You are the senior Publishing & SEO QA agent for Career Compass,
+a premium career development and coaching app for early-career professionals.
+
+You have final authority on whether a blog post is ready to be published.
+
+Your responsibilities:
+- Ensure the content is clear, valuable, and aligned with Career Compass brand voice
+- Generate clean, SEO-ready publishing metadata
+- Detect common failure modes (thin content, fluff, redundancy, weak framing)
+- Protect long-term search and brand equity
+
+Be strict. If the post is not ready, mark it as NOT ready.
+
+---
+
+### INPUT CONTENT
+Full blog article content:
+{article}
+
+---
+
+### BRAND VOICE & QUALITY BAR
+Career Compass content must be:
+- Practical, thoughtful, and grounded (no hustle porn, no generic motivation)
+- Written for early-career professionals (ages ~22–35)
+- Action-oriented with real takeaways
+- Clear and skimmable (short paragraphs, strong structure)
+- Credible and calm — not salesy or preachy
+
+---
+
+### SEO & CMS CONSTRAINTS
+Title:
+- ≤ 60 characters
+- Clear value, not clickbait
+
+Slug:
+- Lowercase
+- Hyphenated
+- Concise, keyword-aligned
+
+Summary:
+- 1–2 sentences
+- Suitable for meta description and social preview
+- ≤ 160 characters preferred
+
+Excerpt:
+- 1 short paragraph that invites reading without repeating the title
+- Written in a human, conversational tone
+
+Tags:
+- 3–6 tags max
+- Use consistent taxonomy (career-growth, managers, productivity, etc.)
+- Avoid duplicates, plurals, or near-synonyms
+
+---
+
+### QUALITY GATE
+Set `content_ready` to TRUE only if ALL are true:
+- The article delivers clear, non-obvious value
+- The opening frames a real problem
+- The structure is coherent and scannable
+- There is at least one concrete, actionable takeaway
+- The content matches Career Compass tone and positioning
+
+If any of these fail, set `content_ready` to FALSE.
+
+---
+
+### OUTPUT FORMAT
+Return a **strict JSON object** with the following keys:
+
+- title
+- slug
+- summary
+- excerpt
+- tags (array of strings)
+- content_ready (boolean)
+- blocking_issues (array of strings, empty if ready)
+
+Do not include commentary outside the JSON.
 """
 
 
@@ -179,10 +309,115 @@ class PublishingAgent(BaseAgent):
                 "reason": "No image URL or file path provided; skipping Webflow CMS creation.",
             }
 
-        title = metadata.get("title") or metadata.get("suggested_title") or "Career Compass Blog"
+        # Derive title: prefer metadata, then suggested_title, then H1 from the markdown, else fallback
+        title = metadata.get("title") or metadata.get("suggested_title") or None
         description = metadata.get("summary") or metadata.get("excerpt") or ""
         article_html = metadata.get("html") or blog_markdown
+
+        if not title:
+            # try to pull the H1 from the markdown as a sensible default
+            m = re.search(r"^#\s+(.+)$", blog_markdown or "", flags=re.MULTILINE)
+            if m:
+                title = m.group(1).strip()
+            else:
+                title = "Career Compass Blog"
         author_id = self.settings.webflow_author_id
+
+        # Discover collection field slugs so we send the correct field names.
+        try:
+            col_fields = cms.get_collection_fields(self.settings.webflow_collection_id)
+        except Exception:
+            col_fields = []
+
+        # helpers to pick slugs
+        def first_slug_by_type(t):
+            for f in col_fields:
+                if f.get("type") == t:
+                    return f.get("slug")
+            return None
+
+        def first_plaintext_slug(exclude=()):
+            for f in col_fields:
+                if f.get("type") == "PlainText" and f.get("slug") not in exclude:
+                    return f.get("slug")
+            return None
+
+        # determine slugs with sensible defaults
+        field_slug_title = "name"
+        field_slug_slug = "slug"
+        field_slug_article = "post-body"
+        field_slug_main_image = "main-image"
+        field_slug_thumb_image = "thumbnail-image"
+        field_slug_description = "description"
+        field_slug_author = "author"
+
+        # prefer actual slugs present in the collection
+        if any(f.get("slug") == "name" for f in col_fields):
+            field_slug_title = "name"
+        else:
+            field_slug_title = first_plaintext_slug() or field_slug_title
+
+        if any(f.get("slug") == "slug" for f in col_fields):
+            field_slug_slug = "slug"
+        else:
+            field_slug_slug = first_plaintext_slug(exclude=(field_slug_title,)) or field_slug_slug
+
+        field_slug_article = first_slug_by_type("RichText") or field_slug_article
+        image_slugs = [f.get("slug") for f in col_fields if f.get("type") == "Image"]
+        field_slug_main_image = image_slugs[0] if image_slugs else field_slug_main_image
+        field_slug_thumb_image = image_slugs[1] if len(image_slugs) > 1 else (image_slugs[0] if image_slugs else field_slug_thumb_image)
+        field_slug_description = first_plaintext_slug(exclude=(field_slug_title, field_slug_slug)) or field_slug_description
+        # find reference field for author if present
+        for f in col_fields:
+            if f.get("type") == "Reference":
+                field_slug_author = f.get("slug")
+                break
+
+        # ensure alt text fallbacks are sane strings
+        main_image_alt = metadata.get("image_alt") or metadata.get("alt") or title or ""
+        thumb_image_alt = metadata.get("thumbnail_alt") or metadata.get("thumb_alt") or main_image_alt
+        # Prepare extra field data: category assignment and short SEO summary (<=60 chars)
+        extra_fields: Dict[str, Any] = {}
+
+        # derive a short SEO summary (aim for <= 60 characters)
+        raw_summary = metadata.get("search_summary") or metadata.get("summary") or metadata.get("excerpt") or ""
+        if len(raw_summary) > 60:
+            # try to not cut words abruptly
+            short_summary = (raw_summary[:57].rsplit(" ", 1)[0] + "...")
+        else:
+            short_summary = raw_summary
+
+        # Discover likely category and summary/meta slugs from collection fields
+        category_field_slug = None
+        category_field_type = None
+        summary_field_slug = None
+        for f in col_fields:
+            slug = (f.get("slug") or "")
+            name = (f.get("name") or "")
+            lslug = slug.lower()
+            lname = name.lower()
+            if not category_field_slug and ("category" in lslug or "category" in lname or "categories" in lslug):
+                category_field_slug = slug
+                category_field_type = f.get("type")
+            if not summary_field_slug and any(k in lslug for k in ("summary", "meta", "description", "excerpt")):
+                summary_field_slug = slug
+
+        if not summary_field_slug:
+            summary_field_slug = field_slug_description
+
+        # If a category id is configured in settings or metadata, attach it to the extra fields
+        category_id = metadata.get("category_id") or getattr(self.settings, "webflow_category_id", None)
+        if category_id and category_field_slug:
+            if category_field_type and "Multi" in (category_field_type or ""):
+                extra_fields[category_field_slug] = [category_id]
+            elif category_field_type == "Reference":
+                extra_fields[category_field_slug] = category_id
+            else:
+                extra_fields[category_field_slug] = metadata.get("category") or "Resources"
+
+        # Add short summary
+        if short_summary:
+            extra_fields[summary_field_slug] = short_summary
 
         try:
             response = cms.create_draft_blog_item(
@@ -193,8 +428,16 @@ class PublishingAgent(BaseAgent):
                 author_item_id=author_id,
                 main_image_url=hosted_image_url,
                 thumb_image_url=thumb_image_url or hosted_image_url,
-                main_image_alt=metadata.get("image_alt", ""),
-                thumb_image_alt=metadata.get("thumbnail_alt", ""),
+                main_image_alt=main_image_alt,
+                thumb_image_alt=thumb_image_alt,
+                extra_field_data=extra_fields,
+                field_slug_title=field_slug_title,
+                field_slug_slug=field_slug_slug,
+                field_slug_description=field_slug_description,
+                field_slug_article=field_slug_article,
+                field_slug_author=field_slug_author,
+                field_slug_main_image=field_slug_main_image,
+                field_slug_thumb_image=field_slug_thumb_image,
             )
         except Exception as exc:  # pragma: no cover - network call
             return {"status": "error", "reason": f"Webflow CMS create failed: {exc}"}

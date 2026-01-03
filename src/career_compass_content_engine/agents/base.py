@@ -34,7 +34,20 @@ class BaseAgent:
 
     def run(self, prompt: str) -> AgentResult:  # pragma: no cover - thin wrapper
         response = self.llm.invoke(prompt)
-        return AgentResult(content={"message": response.content}, raw_response=str(response))
+        # Normalize raw_response: if the model returned structured content, serialize it
+        raw = response.content
+        try:
+            # If content is already a string, keep as-is; otherwise JSON-serialize
+            if isinstance(raw, str):
+                raw_response = raw
+            else:
+                import json
+
+                raw_response = json.dumps(raw)
+        except Exception:
+            raw_response = str(response)
+
+        return AgentResult(content={"message": response.content}, raw_response=raw_response)
 
     def build_prompt(self, instructions: str) -> str:
         return f"{self.system_prompt}\n\n{instructions}"
