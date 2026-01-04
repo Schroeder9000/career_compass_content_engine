@@ -72,8 +72,35 @@ class Supervisor:
         image_file_path = None
         if image_plan and image_plan.get("prompt"):
             gen = ImageGenerator()
+            # prefer the configured OpenAI key from settings rather than relying on env
+            gen.openai_api_key = self.settings.openai_api_key
+            # Determine size: prefer explicit `size`, else map `aspect_ratio` like '16:9' to a concrete pixel size.
+            size = None
+            if image_plan.get("size"):
+                size = image_plan.get("size")
+            elif image_plan.get("aspect_ratio"):
+                ar = str(image_plan.get("aspect_ratio")).strip()
+                if ar in ("16:9", "16x9", "16by9"):
+                    # OpenAI Images supports a limited set of sizes; pick the widest landscape option available.
+                    size = "1536x1024"
+                elif ar in ("4:3", "4x3", "4by3"):
+                    # map to the closest supported landscape size
+                    size = "1536x1024"
+                elif ar in ("1:1", "1x1"):
+                    size = "1024x1024"
+                else:
+                    # default fallback to a square-ish image if unknown
+                    size = "1024x1024"
+            else:
+                size = "1024x1024"
+
+            # Encourage the model to compose for the requested aspect ratio in the prompt text.
+            prompt_text = image_plan.get("prompt")
+            if image_plan.get("aspect_ratio"):
+                prompt_text = f"{prompt_text} -- Prefer aspect ratio {image_plan.get('aspect_ratio')} when composing the image."
+
             try:
-                img_path = gen.generate(image_plan.get("prompt"))
+                img_path = gen.generate(prompt_text, size=size)
                 image_file_path = str(img_path)
             except Exception:
                 image_file_path = None
@@ -91,7 +118,18 @@ class Supervisor:
 
 
 def _safe_parse(raw: str) -> Dict[str, str]:
+    if not raw:
+        return {}
+    # If the model wrapped JSON in code fences or added a language tag, extract the JSON block.
     try:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
+        import re
+
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                return {}
         return {}

@@ -155,14 +155,22 @@ class WebflowCMS:
                 field_slug_slug: slugify(title),
                 field_slug_description: description,
                 field_slug_article: article_html,
-                field_slug_main_image: {"url": main_image_url, **({"alt": main_image_alt} if main_image_alt else {})},
+                # Always include both `url` and `alt` keys so Webflow receives
+                # a consistent image object. Also include `alt_text` for
+                # compatibility with any templates expecting that key.
+                field_slug_main_image: {
+                    "url": main_image_url,
+                    "alt": main_image_alt,
+                    "alt_text": main_image_alt,
+                },
             },
         }
 
         if thumb_image_url:
             payload["fieldData"][field_slug_thumb_image] = {
                 "url": thumb_image_url,
-                **({"alt": thumb_image_alt} if thumb_image_alt else {}),
+                "alt": thumb_image_alt,
+                "alt_text": thumb_image_alt,
             }
 
         if author_item_id:
@@ -379,13 +387,20 @@ class PublishingAgent(BaseAgent):
         # Prepare extra field data: category assignment and short SEO summary (<=60 chars)
         extra_fields: Dict[str, Any] = {}
 
-        # derive a short SEO summary (aim for <= 60 characters)
+        # derive a short engaging summary (1-2 sentences). Do not enforce a strict character limit.
         raw_summary = metadata.get("search_summary") or metadata.get("summary") or metadata.get("excerpt") or ""
-        if len(raw_summary) > 60:
-            # try to not cut words abruptly
-            short_summary = (raw_summary[:57].rsplit(" ", 1)[0] + "...")
-        else:
-            short_summary = raw_summary
+        short_summary = ""
+        if raw_summary:
+            # Try to keep it to the first two sentences for a concise meta description.
+            import re
+
+            sentences = [s.strip() for s in re.split(r'(?<=[\.!?])\s+', raw_summary) if s.strip()]
+            if not sentences:
+                short_summary = raw_summary
+            else:
+                short_summary = " ".join(sentences[:2])
+                # final safety: strip trailing whitespace
+                short_summary = short_summary.strip()
 
         # Discover likely category and summary/meta slugs from collection fields
         category_field_slug = None
@@ -418,6 +433,15 @@ class PublishingAgent(BaseAgent):
         # Add short summary
         if short_summary:
             extra_fields[summary_field_slug] = short_summary
+            # Also ensure a dedicated `summary` field receives the short summary
+            # so collections that use `summary` as the slug get the ~60-char SEO text.
+            extra_fields["summary"] = short_summary
+
+        # Add required Webflow taxonomy/reference fields for our collection
+        # These are set to fixed IDs for category and author as requested.
+        # Allow metadata to override if explicitly provided.
+        extra_fields.setdefault("blog-post-category", metadata.get("blog-post-category") or "6759b39c1464ba09dc7d785e")
+        extra_fields.setdefault("blog-post-author", metadata.get("blog-post-author") or "6759b39c1464ba09dc7d783d")
 
         try:
             response = cms.create_draft_blog_item(
