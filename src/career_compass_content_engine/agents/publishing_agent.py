@@ -387,13 +387,20 @@ class PublishingAgent(BaseAgent):
         # Prepare extra field data: category assignment and short SEO summary (<=60 chars)
         extra_fields: Dict[str, Any] = {}
 
-        # derive a short SEO summary (aim for <= 60 characters)
+        # derive a short engaging summary (1-2 sentences). Do not enforce a strict character limit.
         raw_summary = metadata.get("search_summary") or metadata.get("summary") or metadata.get("excerpt") or ""
-        if len(raw_summary) > 60:
-            # try to not cut words abruptly
-            short_summary = (raw_summary[:57].rsplit(" ", 1)[0] + "...")
-        else:
-            short_summary = raw_summary
+        short_summary = ""
+        if raw_summary:
+            # Try to keep it to the first two sentences for a concise meta description.
+            import re
+
+            sentences = [s.strip() for s in re.split(r'(?<=[\.!?])\s+', raw_summary) if s.strip()]
+            if not sentences:
+                short_summary = raw_summary
+            else:
+                short_summary = " ".join(sentences[:2])
+                # final safety: strip trailing whitespace
+                short_summary = short_summary.strip()
 
         # Discover likely category and summary/meta slugs from collection fields
         category_field_slug = None

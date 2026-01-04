@@ -43,6 +43,14 @@ Grounding examples (use as style references; do NOT copy phrases verbatim):
 
 ---
 
+### GROUNDED CONTENT INSTRUCTIONS
+- The text above are retrieved example documents to ground your voice and structure.
+- Use them to mirror rhythm, headings, checklist formats, and specific example types (scripts, agendas), but DO NOT copy sentences verbatim.
+- Do NOT output any of the retrieved text, filenames, or metadata in your final blog post — they are only for grounding.
+- Prefer including concrete, human-feeling examples and checklist items inspired by these documents.
+
+---
+
 ### REQUIRED STRUCTURE (DON'T SKIP)
 1) Title (H1)
 2) Hook (2–4 short paragraphs): name a real early-career pain point; no clichés
