@@ -155,14 +155,22 @@ class WebflowCMS:
                 field_slug_slug: slugify(title),
                 field_slug_description: description,
                 field_slug_article: article_html,
-                field_slug_main_image: {"url": main_image_url, **({"alt": main_image_alt} if main_image_alt else {})},
+                # Always include both `url` and `alt` keys so Webflow receives
+                # a consistent image object. Also include `alt_text` for
+                # compatibility with any templates expecting that key.
+                field_slug_main_image: {
+                    "url": main_image_url,
+                    "alt": main_image_alt,
+                    "alt_text": main_image_alt,
+                },
             },
         }
 
         if thumb_image_url:
             payload["fieldData"][field_slug_thumb_image] = {
                 "url": thumb_image_url,
-                **({"alt": thumb_image_alt} if thumb_image_alt else {}),
+                "alt": thumb_image_alt,
+                "alt_text": thumb_image_alt,
             }
 
         if author_item_id:
