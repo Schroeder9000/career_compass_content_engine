@@ -419,6 +419,12 @@ class PublishingAgent(BaseAgent):
         if short_summary:
             extra_fields[summary_field_slug] = short_summary
 
+        # Add required Webflow taxonomy/reference fields for our collection
+        # These are set to fixed IDs for category and author as requested.
+        # Allow metadata to override if explicitly provided.
+        extra_fields.setdefault("blog-post-category", metadata.get("blog-post-category") or "6759b39c1464ba09dc7d785e")
+        extra_fields.setdefault("blog-post-author", metadata.get("blog-post-author") or "6759b39c1464ba09dc7d783d")
+
         try:
             response = cms.create_draft_blog_item(
                 self.settings.webflow_collection_id,
