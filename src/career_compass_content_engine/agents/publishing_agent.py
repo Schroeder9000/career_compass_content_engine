@@ -418,6 +418,9 @@ class PublishingAgent(BaseAgent):
         # Add short summary
         if short_summary:
             extra_fields[summary_field_slug] = short_summary
+            # Also ensure a dedicated `summary` field receives the short summary
+            # so collections that use `summary` as the slug get the ~60-char SEO text.
+            extra_fields["summary"] = short_summary
 
         # Add required Webflow taxonomy/reference fields for our collection
         # These are set to fixed IDs for category and author as requested.
