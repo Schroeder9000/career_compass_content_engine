@@ -13,6 +13,10 @@ from typing import Any, Dict, Optional
 
 
 import requests
+try:
+    from markdown import markdown as md_to_html
+except Exception:
+    md_to_html = None
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from ..config import Settings
@@ -232,10 +236,13 @@ Slug:
 - Hyphenated
 - Concise, keyword-aligned
 
-Summary:
-- 1–2 sentences
-- Suitable for meta description and social preview
-- ≤ 160 characters preferred
+Summary (SEO meta description):
+- Target length: 140–160 characters (aim for ~155).
+- Hard max: 200 characters (if necessary, truncate to 200).
+- Format: 1–2 plain-language sentences.
+- Put the primary keyword or topic phrase near the start.
+- Include a clear, specific benefit (what the reader will be able to do or learn).
+- If a draft summary is provided, rewrite it to meet these constraints.
 
 Excerpt:
 - 1 short paragraph that invites reading without repeating the title
@@ -320,7 +327,19 @@ class PublishingAgent(BaseAgent):
         # Derive title: prefer metadata, then suggested_title, then H1 from the markdown, else fallback
         title = metadata.get("title") or metadata.get("suggested_title") or None
         description = metadata.get("summary") or metadata.get("excerpt") or ""
-        article_html = metadata.get("html") or blog_markdown
+        # If the metadata provided pre-rendered HTML, prefer it. Otherwise convert Markdown to HTML.
+        if metadata.get("html"):
+            article_html = metadata.get("html")
+        else:
+            if md_to_html:
+                try:
+                    article_html = md_to_html(blog_markdown, extensions=["extra", "sane_lists"])
+                except Exception:
+                    article_html = f"<pre>{blog_markdown}</pre>"
+            else:
+                # Minimal fallback: wrap paragraphs
+                paragraphs = [p.strip() for p in (blog_markdown or "").split("\n\n") if p.strip()]
+                article_html = "".join("<p>{}</p>".format(p.replace("\n", " ")) for p in paragraphs)
 
         if not title:
             # try to pull the H1 from the markdown as a sensible default
@@ -430,12 +449,65 @@ class PublishingAgent(BaseAgent):
             else:
                 extra_fields[category_field_slug] = metadata.get("category") or "Resources"
 
-        # Add short summary
+        # Add short summary and ensure it meets SEO guidelines (target 140–160 chars,
+        # hard max 200). If it doesn't meet the target, ask the LLM to rewrite it.
         if short_summary:
-            extra_fields[summary_field_slug] = short_summary
+            def _rewrite_summary_to_target(text: str) -> str:
+                base_prompt = (
+                    "Rewrite the following meta description to meet SEO guidelines.\n\n"
+                    "Constraints:\n"
+                    "- Target length: 140–160 characters (aim for ~155).\n"
+                    "- Hard max: 200 characters (truncate if necessary).\n"
+                    "- Output must be 1–2 plain-language sentences.\n"
+                    "- Put the primary keyword or topic phrase near the start.\n"
+                    "- Include a clear, specific benefit (what the reader will be able to do or learn).\n"
+                    "- Do NOT include surrounding quotation marks or extra commentary; return raw text only.\n\n"
+                )
+
+                def call_once(prompt_text: str) -> str:
+                    try:
+                        res = self.run(prompt_text)
+                        new = None
+                        if res and res.content:
+                            new = res.content.get("message")
+                        if isinstance(new, dict):
+                            new = new.get("summary") or next(iter(new.values()), None)
+                        if not new:
+                            return text
+                        new = str(new).strip()
+                        # strip surrounding quotes if model included them
+                        if len(new) >= 2 and ((new[0] == new[-1] == '"') or (new[0] == new[-1] == "'")):
+                            new = new[1:-1].strip()
+                        if len(new) > 200:
+                            new = new[:197].rstrip() + "..."
+                        return new
+                    except Exception:
+                        return text
+
+                inst = base_prompt + "Original summary:\n\"\"\"" + text + "\"\"\""
+                # First attempt
+                out = call_once(inst)
+                # If too short, try a stronger expand instruction once
+                if len(out) < 140:
+                    expand_prompt = (
+                        base_prompt
+                        + "If the rewritten summary is shorter than 140 characters, expand it so it falls between 140 and 160 characters, keeping the same constraints.\n\n"
+                        + "Original summary:\n\"\"\""
+                        + text
+                        + "\"\"\""
+                    )
+                    out = call_once(expand_prompt)
+                return out
+
+            rewritten = short_summary
+            if not (140 <= len(short_summary) <= 160):
+                rewritten = _rewrite_summary_to_target(short_summary)
+            if len(rewritten) > 200:
+                rewritten = rewritten[:197].rstrip() + "..."
+
+            extra_fields[summary_field_slug] = rewritten
             # Also ensure a dedicated `summary` field receives the short summary
-            # so collections that use `summary` as the slug get the ~60-char SEO text.
-            extra_fields["summary"] = short_summary
+            extra_fields["summary"] = rewritten
 
         # Add required Webflow taxonomy/reference fields for our collection
         # These are set to fixed IDs for category and author as requested.

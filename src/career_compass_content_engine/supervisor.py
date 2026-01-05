@@ -11,6 +11,7 @@ from .agents.image_agent import ImageAgent
 from .agents.publishing_agent import PublishingAgent
 from .agents.research_agent import ResearchAgent
 from .agents.writing_agent import WritingAgent
+from .agents.editing_agent import EditingAgent
 from .agents.image_generator import ImageGenerator
 from .config import Settings, get_settings
 from .rag import RAGPipeline
@@ -45,6 +46,11 @@ class Supervisor:
             name="Content Writer",
             system_prompt="Principal writer who crafts concise, actionable Career Compass blogs.",
         )
+        self.editor_agent = EditingAgent(
+            llm=self.llm,
+            name="Senior Editor",
+            system_prompt="Senior editor who polishes drafts to publish-ready quality.",
+        )
         self.image_agent = ImageAgent(
             llm=self.llm,
             name="Visual Designer",
@@ -64,6 +70,10 @@ class Supervisor:
 
         blog_result = self.writer_agent.draft(research_payload, rag_context, context)
         blog_content = blog_result.content.get("message", str(blog_result.raw_response))
+
+        # Run editing/refinement step
+        edited_result = self.editor_agent.refine(blog_content)
+        edited_content = edited_result.content.get("message", str(edited_result.raw_response))
 
         image_result = self.image_agent.design(research_payload, rag_context, context)
         image_plan = _safe_parse(image_result.raw_response)
@@ -105,13 +115,14 @@ class Supervisor:
             except Exception:
                 image_file_path = None
 
-        metadata_result = self.publisher.prepare_metadata(blog_content)
+        # Use the edited content for metadata generation and publishing
+        metadata_result = self.publisher.prepare_metadata(edited_content)
         metadata_payload = _safe_parse(metadata_result.raw_response)
-        publish_result = self.publisher.upload_to_webflow(metadata_payload, blog_content, image_file_path=image_file_path)
+        publish_result = self.publisher.upload_to_webflow(metadata_payload, edited_content, image_file_path=image_file_path)
 
         return WorkflowResult(
             research=research_payload,
-            blog_post=blog_content,
+            blog_post=edited_content,
             image_plan=image_plan,
             publish_result=publish_result,
         )
