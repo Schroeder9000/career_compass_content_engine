@@ -7,3 +7,5 @@ modal>=0.62.0
 pydantic>=2.7.3
 python-dotenv>=1.0.1
 requests>=2.32.3
+markdown>=3.4.4
+
