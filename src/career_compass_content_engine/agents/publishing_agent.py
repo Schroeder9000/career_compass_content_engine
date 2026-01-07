@@ -128,6 +128,26 @@ class WebflowCMS:
         except Exception as exc:
             raise RuntimeError(f"Failed to fetch collection {collection_id} fields: {exc}")
 
+    def list_items(self, collection_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """Retrieve published items from a Webflow collection.
+        
+        Args:
+            collection_id: The collection ID to fetch items from
+            limit: Maximum number of items to retrieve per request (max 100)
+            offset: Number of items to skip for pagination
+            
+        Returns:
+            Dict containing 'items' list and pagination info
+        """
+        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}/items"
+        params = {"limit": min(limit, 100), "offset": offset}
+        try:
+            resp = self._request_with_retries("GET", url, params=params)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            raise RuntimeError(f"Failed to list items from collection {collection_id}: {exc}")
+
     def create_draft_blog_item(
         self,
         collection_id: str,
@@ -206,8 +226,6 @@ Your responsibilities:
 - Detect common failure modes (thin content, fluff, redundancy, weak framing)
 - Protect long-term search and brand equity
 
-Be strict. If the post is not ready, mark it as NOT ready.
-
 ---
 
 ### INPUT CONTENT
@@ -241,6 +259,7 @@ Summary (SEO meta description):
 - Hard max: 200 characters (if necessary, truncate to 200).
 - Format: 1–2 plain-language sentences.
 - Put the primary keyword or topic phrase near the start.
+- Ensure the summary is compelling and engaging, encouraging readers to click and read the article.
 - Include a clear, specific benefit (what the reader will be able to do or learn).
 - If a draft summary is provided, rewrite it to meet these constraints.
 
@@ -458,7 +477,7 @@ class PublishingAgent(BaseAgent):
                     "Constraints:\n"
                     "- Target length: 140–160 characters (aim for ~155).\n"
                     "- Hard max: 200 characters (truncate if necessary).\n"
-                    "- Output must be 1–2 plain-language sentences.\n"
+                    "- Output must be 2-3 sentences.\n"
                     "- Put the primary keyword or topic phrase near the start.\n"
                     "- Include a clear, specific benefit (what the reader will be able to do or learn).\n"
                     "- Do NOT include surrounding quotation marks or extra commentary; return raw text only.\n\n"

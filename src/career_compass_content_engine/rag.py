@@ -20,32 +20,54 @@ SUPPORTED_SUFFIXES = {".md", ".txt", ".json"}
 
 @dataclass
 class RAGPipeline:
-    """Simple RAG pipeline using local examples for grounding content."""
+    """Simple RAG pipeline using local examples for grounding content.
+    
+    Maintains separate vectorstores for text (writing/editing) and images (image design).
+    """
 
     embeddings: Embeddings
-    vectorstore: FAISS
+    text_vectorstore: FAISS
+    image_vectorstore: FAISS
 
     @classmethod
     def from_examples(cls, examples_dir: Path | None = None) -> "RAGPipeline":
         directory = examples_dir or EXAMPLES_DIR
         text_dir = directory / "text"
-
         image_dir = directory / "images"
 
         text_dir.mkdir(parents=True, exist_ok=True)
         image_dir.mkdir(parents=True, exist_ok=True)
 
-        documents = _load_documents([text_dir, image_dir])
+        # Load text and image documents separately
+        text_documents = _load_documents([text_dir])
+        image_documents = _load_documents([image_dir])
 
         embeddings = OpenAIEmbeddings()
-        vectorstore = FAISS.from_documents(documents, embeddings) if documents else FAISS.from_texts([""], embeddings)
-        return cls(embeddings=embeddings, vectorstore=vectorstore)
+        
+        # Create separate vectorstores
+        text_vectorstore = FAISS.from_documents(text_documents, embeddings) if text_documents else FAISS.from_texts([""], embeddings)
+        image_vectorstore = FAISS.from_documents(image_documents, embeddings) if image_documents else FAISS.from_texts([""], embeddings)
+        
+        return cls(embeddings=embeddings, text_vectorstore=text_vectorstore, image_vectorstore=image_vectorstore)
 
-    def retrieve(self, query: str, k: int = 4) -> List[Document]:
-        return self.vectorstore.similarity_search(query, k=k)
+    def retrieve_text(self, query: str, k: int = 4) -> List[Document]:
+        """Retrieve text examples for writing and editing."""
+        return self.text_vectorstore.similarity_search(query, k=k)
 
-    def as_context(self, query: str, k: int = 4) -> str:
-        results = self.retrieve(query, k=k)
+    def retrieve_images(self, query: str, k: int = 4) -> List[Document]:
+        """Retrieve image examples for visual design."""
+        return self.image_vectorstore.similarity_search(query, k=k)
+
+    def as_text_context(self, query: str, k: int = 4) -> str:
+        """Get text examples as context string for writing/editing agents."""
+        results = self.retrieve_text(query, k=k)
+        if not results:
+            return ""
+        return "\n\n".join(doc.page_content for doc in results)
+
+    def as_image_context(self, query: str, k: int = 4) -> str:
+        """Get image examples as context string for image agent."""
+        results = self.retrieve_images(query, k=k)
         if not results:
             return ""
         return "\n\n".join(doc.page_content for doc in results)

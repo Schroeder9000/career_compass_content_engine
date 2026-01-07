@@ -66,16 +66,19 @@ class Supervisor:
     def run_workflow(self, existing_content: str, context: AgentContext) -> WorkflowResult:
         research_result = self.research_agent.recommend(existing_content, context)
         research_payload = _safe_parse(research_result.raw_response)
-        rag_context = self.rag.as_context(query=research_payload.get("topic", "Career Compass"))
+        
+        # Get separate contexts for different agent types
+        text_context = self.rag.as_text_context(query=research_payload.get("topic", "Career Compass"))
+        image_context = self.rag.as_image_context(query=research_payload.get("topic", "Career Compass"))
 
-        blog_result = self.writer_agent.draft(research_payload, rag_context, context)
+        blog_result = self.writer_agent.draft(research_payload, text_context, context)
         blog_content = blog_result.content.get("message", str(blog_result.raw_response))
 
         # Run editing/refinement step
         edited_result = self.editor_agent.refine(blog_content)
         edited_content = edited_result.content.get("message", str(edited_result.raw_response))
 
-        image_result = self.image_agent.design(research_payload, rag_context, context)
+        image_result = self.image_agent.design(research_payload, image_context, context)
         image_plan = _safe_parse(image_result.raw_response)
 
         # If an image prompt was produced, generate and upload the image locally before publishing
