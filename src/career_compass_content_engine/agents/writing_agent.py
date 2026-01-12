@@ -12,10 +12,9 @@ WRITING_TEMPLATE = """
 You are the lead writer for Career Compass: a premium career development and coaching app for early-career professionals.
 
 Write like a real human:
-- Warm, candid, practical, lightly funny when appropriate
-- 8th-grade reading level (simple words, short sentences)
+- Warm, candid, practical, funny when appropriate
 - No corporate filler, no generic motivation
-- Specific, actionable guidance with examples and scripts
+- Specific, actionable guidance with examples and scripts as needed
 
 Non-negotiable quality bar:
 This post should feel like it came from an experienced career coach with strong opinions.
@@ -41,25 +40,27 @@ Before you write, decide on a clear POV:
 - What should they do instead (your framework)?
 - What is a slightly contrarian but true take you can defend?
 
-Write a complete blog post in Markdown (1,200–1,800 words) with the structure below.
+Write a complete blog post in Markdown (1,200–2,500 words) with the structure below.
 
 REQUIRED STRUCTURE
 1) H1 title (not clickbait)
 2) Hook (2–5 short paragraphs): vivid pain point + why it matters now
 3) TL;DR (5–7 bullets): specific, non-obvious
-4) Main sections (H2/H3) that include:
-   - A simple framework with a memorable name (e.g., “The 3-Part 1:1 Win”)
-   - At least 2 “say this / not that” examples
-   - At least 1 ready-to-send message (email/Slack) template
-   - At least 1 checklist (10–15 bullets)
-   - At least 1 short “real-life moment” vignette (plausible, anonymous)
-5) Common mistakes + fixes (bulleted)
-6) A 7–14 day mini-plan (5–10 actions)
-7) Career Compass CTA (not salesy): 2–3 sentences + 3 bullets:
+4) Main sections (H2/H3) that should align closely with the outline provided, but feel free to adjust for flow and clarity.
+   - This is long-format, thought leadership content, so each section should be 3–5 paragraphs with mindset shifts, examples and contrarian points of view.
+   - This content should be grounded in practical guidance for managing your early career, including the emotional and relational challenges that aren't covered in business school
+   - The tone is supportive and practical, with a good sense of humor when appropriate. Avoid being too formal or academic. Poking fun at Corporate America is part of the brand voice, but avoid clichés and overused phrases.
+5) Career Compass CTA (not salesy): 2–3 sentences + 3 bullets:
    - build a growth plan
    - track weekly wins + career metrics
-   - get weekly coaching nudges (email/push)
-8) Closing paragraph: personal, encouraging, not generic
+   - get weekly coaching nudges (email)
+6) Closing paragraph: personal, encouraging, not generic
+
+ADDITIONAL POSSIBLE SECTIONS (if relevant):
+- Common mistakes + fixes (bulleted)
+- A 7–14 day mini-plan (5–10 actions)
+- Emotional Management: how to handle the feelings that come up with this topic
+- How to Talk to Your Manager: scripts for how to have the conversation with your manager or stakeholders
 
 HUMANNESS RULES
 - Vary sentence length and rhythm.

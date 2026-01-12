@@ -47,16 +47,16 @@ Primary visual style:
 Concept art / modern editorial illustration
 
 Art direction:
-- Minimalist composition with strong focal point
+- Conceptual composition with strong focal point
 - Abstract human figures or symbolic elements (not detailed faces)
 - Visual metaphor preferred over literal workplace scenes
 - Clean negative space; no clutter
 - Subtle sense of motion or progress
 
-Color palette:
-- Primary: Career Compass Orange
-- Secondary: Charcoal Black, Warm Gray
-- High contrast; no bright blues, purples, or neon colors
+Color Palette
+- Primary — Compass Orange : A warm, burnished orange that signals momentum and progress. It feels earned, not flashy—more sunrise than spotlight—representing steady growth, direction, and forward motion.
+- Secondary — Charcoal Black & Warm Stone Gray : Deep charcoal anchors the palette with seriousness and contrast, while layered warm grays add depth, texture, and restraint. Together, they create a grounded, architectural foundation that lets the orange lead without noise.
+- Overall Treatment :High-contrast and intentional. Earth-toned, human, and timeless. No bright blues, purples, or neon hues—nothing that distracts, cheapens, or dates the experience. Every color serves clarity, focus, and long-term credibility.
 
 Texture & finish:
 - Slightly grainy or linocut-style texture
