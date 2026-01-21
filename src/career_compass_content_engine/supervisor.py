@@ -94,11 +94,11 @@ class Supervisor:
             elif image_plan.get("aspect_ratio"):
                 ar = str(image_plan.get("aspect_ratio")).strip()
                 if ar in ("16:9", "16x9", "16by9"):
-                    # OpenAI Images supports a limited set of sizes; pick the widest landscape option available.
-                    size = "1536x1024"
+                    # DALL-E 3 supports: 1024x1024, 1792x1024, or 1024x1792
+                    size = "1792x1024"
                 elif ar in ("4:3", "4x3", "4by3"):
                     # map to the closest supported landscape size
-                    size = "1536x1024"
+                    size = "1792x1024"
                 elif ar in ("1:1", "1x1"):
                     size = "1024x1024"
                 else:

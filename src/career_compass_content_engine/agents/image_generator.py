@@ -138,10 +138,11 @@ class ImageGenerator:
                     "Content-Type": "application/json",
                 }
                 payload = {
-                    "model": "gpt-image-1",
+                    "model": "dall-e-3",
                     "prompt": prompt,
                     "n": 1,
                     "size": size,
+                    "response_format": "b64_json",
                 }
                 resp = requests.post("https://api.openai.com/v1/images/generations", json=payload, headers=headers, timeout=60)
                 if resp.status_code != 200:
