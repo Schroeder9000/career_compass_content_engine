@@ -107,10 +107,12 @@ class Supervisor:
             else:
                 size = "1024x1024"
 
-            # Encourage the model to compose for the requested aspect ratio in the prompt text.
+            # Encourage the model to compose for the requested aspect ratio and fill the entire frame.
             prompt_text = image_plan.get("prompt")
             if image_plan.get("aspect_ratio"):
-                prompt_text = f"{prompt_text} -- Prefer aspect ratio {image_plan.get('aspect_ratio')} when composing the image."
+                prompt_text = f"{prompt_text} -- IMPORTANT: Create a full-frame composition that fills the entire {image_plan.get('aspect_ratio')} canvas edge-to-edge with no borders, padding, or empty space around the illustration. The artwork should extend to all four edges of the frame."
+            else:
+                prompt_text = f"{prompt_text} -- IMPORTANT: Create a full-frame composition that fills the entire canvas edge-to-edge with no borders, padding, or empty space around the illustration."
 
             try:
                 img_path = gen.generate(prompt_text, size=size)

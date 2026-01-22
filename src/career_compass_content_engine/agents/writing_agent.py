@@ -22,10 +22,13 @@ It must include real guidance (frameworks, checklists, scripts), not vague advic
 
 Inputs:
 Topic: {topic}
+Suggested Title: {title}
 Summary: {summary}
 
 Outline (follow it, but you may refine headings for flow):
 {outline}
+
+IMPORTANT: Use the suggested title provided above as your H1, or make only minor refinements if absolutely necessary for clarity. Do NOT change the core structure or starting words of the title.
 
 Brand context:
 {context}
@@ -68,6 +71,7 @@ HUMANNESS RULES
 - Do not use these phrases: “let’s dive in”, “in today’s world”, “unlock your potential”, “game-changer”.
 - Don’t recap every section at the end.
 - No external citations unless provided. No invented stats.
+- Every section needs to have substance with personal insight, emotional framing or tactical advice. It can't just be a list of bullet points.
 
 Output ONLY the blog post in Markdown.
 """
@@ -81,6 +85,7 @@ class WritingAgent(BaseAgent):
     def draft(self, topic_payload: Dict[str, str], rag_context: str, context: AgentContext) -> AgentResult:
         prompt = WRITING_TEMPLATE.format(
             topic=topic_payload.get("topic", ""),
+            title=topic_payload.get("suggested_title", ""),
             summary=topic_payload.get("summary", topic_payload.get("rationale", "")),
             outline=topic_payload.get("outline", ""),
             context=f"Voice: {context.brand_voice}\nAudience: {context.target_audience}",

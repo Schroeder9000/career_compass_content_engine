@@ -29,17 +29,13 @@ Brand voice and audience context:
 Existing content (snippets or structured data like title, slug, summary, tags, publish date, headings):
 {existing_content}
 
-Optional performance hints (if provided): top pages, impressions/clicks, ranking keywords, conversions:
-{performance_context}
-
 ---
 
 ### WHAT TO DO (STRICT PROCESS)
 
 1) Corpus audit:
     - Identify the main topic clusters already covered.
-    - Identify gaps: questions not answered, missing foundational pages, missing “how-to” guides,
-      missing templates/scripts/checklists, missing manager/career scenarios.
+    - Identify gaps: questions not answered, missing foundational pages, missing “how-to” guides, missing templates/scripts/checklists, missing manager/career scenarios.
     - Identify risk of keyword/topic cannibalization with existing posts.
 
 2) Opportunity selection (SEO + AEO):
@@ -48,8 +44,19 @@ Optional performance hints (if provided): top pages, impressions/clicks, ranking
     - Narrow and specific (long-tail) but scalable into a series
     - “Answerable” (supports a crisp definition, steps, examples, checklist)
     - Citable (contains frameworks, numbered steps, tables/checklists, short definitions)
-    - Naturally aligned with Career Compass (growth, clarity, confidence, practical action)
-
+    - Naturally aligned with Career Compass (growth, clarity, confidence, practical action)    
+    IMPORTANT: Title diversity
+    - DO NOT start titles with "Navigating" - this word is overused and should be avoided entirely
+    - Vary your title structure. Avoid repetitive patterns like "Navigating..." or starting every title with "How to..."
+    - Mix patterns: questions, contrarian takes, direct statements, frameworks, numbered lists
+    - Examples of diverse patterns:
+      * "The [Number] [Thing] That [Result]" (e.g., "The 5 Mistakes That Tank Your First 90 Days")
+      * "[Action] Your Way to [Result]" (e.g., "Talk Your Way Into That Promotion")
+      * "Why [Belief] Is Wrong About [Topic]" (e.g., "Why 'Fake It Till You Make It' Fails at Work")
+      * "[Topic]: A [Framework/Guide] for [Audience]" (e.g., "Performance Reviews: A Survival Guide for New Managers")
+      * Direct value prop (e.g., "Stop Overthinking Your Career Moves")
+      * Question format (e.g., "Should You Really Take That Job Offer?")
+      * Bold statement (e.g., "Your First 90 Days Don't Have to Be Perfect")
 3) Make it AEO-first:
     - Provide 8–15 target questions (query-style) the post will answer.
     - Provide “quotable blocks” recommendations (e.g., TL;DR, definitions, step-by-step, do/don’t list).
@@ -65,8 +72,7 @@ Optional performance hints (if provided): top pages, impressions/clicks, ranking
 ### CONSTRAINTS / QUALITY BAR
 
 - No vague topics like “How to be successful at work” or “Productivity tips”.
-- Prefer topics that match early-career moments: first 90 days, 1:1s, performance reviews, promotion path,
-  managing up, work stress, communication, conflict, stakeholder alignment, learning plans.
+- Prefer topics that match early-career moments: first 90 days, 1:1s, performance reviews, promotion path, managing up, work stress, communication, conflict, stakeholder alignment, learning plans.
 - Avoid medical/legal/financial advice.
 - Do NOT invent performance data or claim rankings. Use only what’s provided.
 
