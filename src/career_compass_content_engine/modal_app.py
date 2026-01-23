@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import modal
 
-from .run_workflow import main as run_content_workflow
+from .run_new_blog_workflow import main as run_content_workflow
 
 
 app = modal.App("career-compass-content-engine")

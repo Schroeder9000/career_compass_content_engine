@@ -17,8 +17,52 @@ from .config import Settings, get_settings
 from .rag import RAGPipeline
 
 
-def build_llm(settings: Settings) -> ChatOpenAI:
-    return ChatOpenAI(model="gpt-4o-mini", api_key=settings.openai_api_key, temperature=0.4)
+def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
+    """
+    Build LLM optimized for specific task types.
+    
+    Task types:
+    - research: Strategic analysis and planning (highest reasoning)
+    - writing: Long-form content generation (high creativity and quality)
+    - editing: Refinement and polish (balanced quality and consistency)
+    - image: Visual concept design (creative but structured)
+    - metadata: Structured data generation (precision and consistency)
+    """
+    # Use the most advanced models for highest quality output
+    # o1 for research (deep reasoning), GPT-4 for content generation
+    model_config = {
+        "research": {
+            "model": "o1",  # Highest reasoning for strategic analysis
+            "temperature": 1,  # o1 models use temperature=1
+        },
+        "writing": {
+            "model": "gpt-4o",  # Best for long-form creative content
+            "temperature": 0.7,  # Higher creativity for engaging content
+        },
+        "editing": {
+            "model": "gpt-4o",  # Best quality for refinement
+            "temperature": 0.5,  # Balanced for consistency with creativity
+        },
+        "image": {
+            "model": "gpt-4o",  # Best for creative visual concepts
+            "temperature": 0.8,  # High creativity for unique visuals
+        },
+        "metadata": {
+            "model": "gpt-4o",  # Best for structured output
+            "temperature": 0.3,  # Lower for consistent formatting
+        },
+        "default": {
+            "model": "gpt-4o",  # Default to best general model
+            "temperature": 0.7,
+        },
+    }
+    
+    config = model_config.get(task_type, model_config["default"])
+    return ChatOpenAI(
+        model=config["model"],
+        api_key=settings.openai_api_key,
+        temperature=config["temperature"],
+    )
 
 
 @dataclass
@@ -34,30 +78,36 @@ class Supervisor:
 
     def __init__(self, settings: Optional[Settings] = None, rag_pipeline: Optional[RAGPipeline] = None) -> None:
         self.settings = settings or get_settings()
-        self.llm = build_llm(self.settings)
+        # Build task-optimized LLMs for highest quality output
+        self.llm_research = build_llm(self.settings, "research")
+        self.llm_writing = build_llm(self.settings, "writing")
+        self.llm_editing = build_llm(self.settings, "editing")
+        self.llm_image = build_llm(self.settings, "image")
+        self.llm_metadata = build_llm(self.settings, "metadata")
+        
         self.rag = rag_pipeline or RAGPipeline.from_examples()
         self.research_agent = ResearchAgent(
-            llm=self.llm,
+            llm=self.llm_research,
             name="SEO Researcher",
             system_prompt="Strategic planner who identifies high-impact Career Compass topics.",
         )
         self.writer_agent = WritingAgent(
-            llm=self.llm,
+            llm=self.llm_writing,
             name="Content Writer",
             system_prompt="Principal writer who crafts concise, actionable Career Compass blogs.",
         )
         self.editor_agent = EditingAgent(
-            llm=self.llm,
+            llm=self.llm_editing,
             name="Senior Editor",
             system_prompt="Senior editor who polishes drafts to publish-ready quality.",
         )
         self.image_agent = ImageAgent(
-            llm=self.llm,
+            llm=self.llm_image,
             name="Visual Designer",
             system_prompt="Designer who produces on-brand imagery prompts for Career Compass.",
         )
         self.publisher = PublishingAgent(
-            llm=self.llm,
+            llm=self.llm_metadata,
             name="Publishing QA",
             system_prompt="Ensures metadata and publishing quality for Career Compass posts.",
             settings=self.settings,

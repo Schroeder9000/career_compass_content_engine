@@ -43,37 +43,78 @@ Before you write, decide on a clear POV:
 - What should they do instead (your framework)?
 - What is a slightly contrarian but true take you can defend?
 
-Write a complete blog post in Markdown (1,200–2,500 words) with the structure below.
+Write a complete blog post in Markdown (1,800–3,000 words minimum) with the structure below.
+
+CRITICAL: DO NOT label structural elements like "Hook" or "CTA" as visible headings. These are instructions for you, not section titles.
 
 REQUIRED STRUCTURE
-1) H1 title (not clickbait)
-2) Hook (2–5 short paragraphs): vivid pain point + why it matters now
-3) TL;DR (5–7 bullets): specific, non-obvious
-4) Main sections (H2/H3) that should align closely with the outline provided, but feel free to adjust for flow and clarity.
-   - This is long-format, thought leadership content, so each section should be 3–5 paragraphs with mindset shifts, examples and contrarian points of view.
-   - This content should be grounded in practical guidance for managing your early career, including the emotional and relational challenges that aren't covered in business school
-   - The tone is supportive and practical, with a good sense of humor when appropriate. Avoid being too formal or academic. Poking fun at Corporate America is part of the brand voice, but avoid clichés and overused phrases.
-5) Career Compass CTA (not salesy): 2–3 sentences + 3 bullets:
-   - build a growth plan
-   - track weekly wins + career metrics
-   - get weekly coaching nudges (email)
-6) Closing paragraph: personal, encouraging, not generic
+1) H1 title (use the suggested title provided)
 
-ADDITIONAL POSSIBLE SECTIONS (if relevant):
-- Common mistakes + fixes (bulleted)
-- A 7–14 day mini-plan (5–10 actions)
-- Emotional Management: how to handle the feelings that come up with this topic
-- How to Talk to Your Manager: scripts for how to have the conversation with your manager or stakeholders
+2) Opening hook (NO HEADING): 3-6 short, punchy paragraphs that:
+   - Paint a vivid, relatable pain point or scenario
+   - Explain why this matters NOW for early-career professionals
+   - Set up your contrarian or nuanced take
+   - Lead naturally into the substance
 
-HUMANNESS RULES
-- Vary sentence length and rhythm.
-- Use concrete nouns and specifics.
-- Do not use these phrases: “let’s dive in”, “in today’s world”, “unlock your potential”, “game-changer”.
-- Don’t recap every section at the end.
-- No external citations unless provided. No invented stats.
-- Every section needs to have substance with personal insight, emotional framing or tactical advice. It can't just be a list of bullet points.
+3) TL;DR section (use heading "## TL;DR"): 5-8 specific, non-obvious bullets that preview your key insights
 
-Output ONLY the blog post in Markdown.
+4) Main content sections (H2/H3): Follow the outline provided, but adapt headings for natural flow
+   - CRITICAL DEPTH REQUIREMENT: Each major H2 section MUST be 300-500 words minimum (5-8 paragraphs)
+   - Each H3 subsection should be 150-250 words (3-4 paragraphs)
+   - MANDATORY: Include 2-3 SPECIFIC, DETAILED examples per major section with names, situations, dialogue
+   - MANDATORY: Provide exact scripts with actual phrasing (not just "say something like...")
+   - MANDATORY: Build a framework or mental model with a memorable name
+   - CONTRARIAN requirement: Challenge at least one piece of conventional wisdom per major section
+   - EMOTIONAL depth: Explicitly name the feelings (anxiety, imposter syndrome, frustration) and validate them
+   - TACTICAL depth: Give step-by-step instructions with actual timeframes and metrics
+   - Use VARIED paragraph lengths: alternate between 1-2 sentence punchy paragraphs and 5-6 sentence analytical ones
+   - SHOW YOUR REASONING: Explain WHY advice works, not just WHAT to do
+
+5) Additional value-add sections (if relevant to topic - NO GENERIC HEADINGS):
+   - Common mistakes section with specific scenarios
+   - A multi-day or multi-week action plan
+   - Scripts for difficult conversations
+   - Decision frameworks or self-assessment tools
+   - Emotional management strategies
+
+6) Career Compass mention (NO HEADING - integrate naturally): 
+   - In your final section or conclusion, naturally mention how Career Compass helps:
+   - Build a personalized growth plan
+   - Track weekly wins and career metrics  
+   - Get weekly coaching nudges via email
+   - Keep it to 2-3 sentences max, woven into the narrative
+
+7) Closing (NO HEADING): 2-4 paragraphs that:
+   - Synthesize your key insight without repeating the TL;DR
+   - Provide encouragement that feels personal, not generic
+   - Leave readers with a concrete next step or mindset shift
+
+HUMANNESS & QUALITY RULES
+- DEPTH OVER BREADTH: Fewer sections with more substance beats many shallow sections
+- SPECIFIC OVER GENERIC: Use real examples, actual numbers, specific scenarios (e.g., "your Tuesday morning standup" not "team meetings")
+- VARIED RHYTHM: Mix 1-sentence paragraphs with 4-5 sentence analytical paragraphs
+- SHOW YOUR WORK: Explain the "why" behind advice, include the reasoning and tradeoffs
+- CONTRARIAN WELCOME: Challenge conventional career advice when you have a defensible alternative view
+- NO FLUFF PHRASES: Avoid "let's dive in", "in today's world", "unlock your potential", "game-changer", "at the end of the day"
+- NO RECAP PARAGRAPHS: Don't summarize what you just said - keep moving forward
+- NO INVENTED DATA: Do not cite statistics or studies unless provided in the context
+- TACTICAL + EMOTIONAL: Balance concrete actions with emotional/relational insights
+- Each major section should feel like a mini-essay with a clear argument or framework
+
+CONTENT REQUIREMENTS FOR LONG-FORM:
+- Include at least 3-4 specific examples or scenarios per main section
+- Provide exact scripts or phrases for difficult conversations when relevant
+- Build frameworks or mental models readers can apply (give them names if helpful)
+- Address the emotional or social dynamics explicitly - the awkwardness, the fear, the office politics
+- Challenge at least one piece of conventional wisdom with a nuanced take
+- Give readers decision-making frameworks, not just "tips"
+
+OUTPUT FORMAT:
+- Output ONLY the blog post content in pure Markdown format
+- DO NOT wrap your output in code blocks or ```markdown fences
+- DO NOT include any meta-commentary, explanations, or notes
+- Start directly with the H1 title
+- End with the final closing paragraph
 """
 
 @dataclass

@@ -533,6 +533,9 @@ class PublishingAgent(BaseAgent):
         # Allow metadata to override if explicitly provided.
         extra_fields.setdefault("blog-post-category", metadata.get("blog-post-category") or "6759b39c1464ba09dc7d785e")
         extra_fields.setdefault("blog-post-author", metadata.get("blog-post-author") or "6759b39c1464ba09dc7d783d")
+        
+        # Remove blog-post-featured-title-featured-card if it exists (Webflow computed field)
+        extra_fields.pop("blog-post-featured-title-featured-card", None)
 
         try:
             response = cms.create_draft_blog_item(
