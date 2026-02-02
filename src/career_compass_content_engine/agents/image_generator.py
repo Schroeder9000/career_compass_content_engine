@@ -28,7 +28,7 @@ class ImageGenerator:
     - Optionally optimize (resize/compress) with Pillow when available.
     """
 
-    def __init__(self, out_dir: str = ".cache/images", max_width: int = 1200, jpeg_quality: int = 85) -> None:
+    def __init__(self, out_dir: str = ".cache/images", max_width: int = 2400, jpeg_quality: int = 90) -> None:
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.max_width = max_width

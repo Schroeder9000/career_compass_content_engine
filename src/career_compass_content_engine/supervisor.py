@@ -160,9 +160,9 @@ class Supervisor:
             # Encourage the model to compose for the requested aspect ratio and fill the entire frame.
             prompt_text = image_plan.get("prompt")
             if image_plan.get("aspect_ratio"):
-                prompt_text = f"{prompt_text} -- IMPORTANT: Create a full-frame composition that fills the entire {image_plan.get('aspect_ratio')} canvas edge-to-edge with no borders, padding, or empty space around the illustration. The artwork should extend to all four edges of the frame."
+                prompt_text = f"{prompt_text} CRITICAL COMPOSITION REQUIREMENTS: This must be a WIDE HORIZONTAL landscape illustration that completely fills the entire {image_plan.get('aspect_ratio')} canvas from edge to edge. DO NOT create a square or portrait composition centered in empty space. DO NOT leave any blank margins, borders, or padding. The illustration must extend fully to the left edge, right edge, top edge, and bottom edge. Use the full WIDTH of the landscape format and spread the design elements horizontally across the entire frame."
             else:
-                prompt_text = f"{prompt_text} -- IMPORTANT: Create a full-frame composition that fills the entire canvas edge-to-edge with no borders, padding, or empty space around the illustration."
+                prompt_text = f"{prompt_text} CRITICAL: Create a full-frame composition that fills the entire canvas edge-to-edge with no borders, padding, or empty space around the illustration."
 
             try:
                 img_path = gen.generate(prompt_text, size=size)

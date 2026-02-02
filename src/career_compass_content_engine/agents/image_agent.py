@@ -47,10 +47,13 @@ Primary visual style:
 Concept art / modern editorial illustration
 
 Art direction:
-- Full-frame composition that extends edge-to-edge; avoid centered subjects with empty borders
+- CRITICAL: Design for a WIDE 16:9 landscape format — the illustration must be HORIZONTAL and fill the entire width of the frame
+- DO NOT create a square or vertical composition centered in empty space
+- DO NOT leave blank margins, borders, or padding around the illustration
+- The artwork must extend completely to the left edge, right edge, top edge, and bottom edge of the 16:9 canvas
+- Use the full WIDTH of the landscape format — spread design elements horizontally across the frame
 - Abstract human figures or symbolic elements (not detailed faces or stick people)
 - Visual metaphor preferred over literal workplace scenes
-- Thoughtful use of negative space within the composition; no empty borders or padding
 - Subtle sense of motion or progress
 - Incorporate Art Deco influences (geometric shapes, stylized forms)
 - Artistic, and creative (not corporate stock photo style). Take interesting viewpoints.
@@ -81,9 +84,12 @@ Aspect ratio:
 16:9 (blog hero image)
 
 Framing:
-- Full-bleed composition that fills the entire 16:9 frame from edge to edge
-- Avoid centered square compositions with empty borders; the illustration should extend to all four edges
-- Design elements should flow across the entire canvas with no padding or margins
+- MANDATORY: Full-bleed composition that fills the entire 16:9 LANDSCAPE frame from edge to edge
+- CRITICAL: The composition must be WIDE and HORIZONTAL, not square
+- DO NOT create a square illustration in the center with empty space on the sides
+- Design elements must extend completely to the left and right edges of the frame
+- The artwork should leverage the full HORIZONTAL width of the 16:9 format
+- No padding, margins, borders, or empty space around the illustration whatsoever
 
 ---
 
