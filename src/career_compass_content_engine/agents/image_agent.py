@@ -48,10 +48,12 @@ Concept art / modern editorial illustration
 
 Art direction:
 - CRITICAL: Design for a WIDE 16:9 landscape format — the illustration must be HORIZONTAL and fill the entire width of the frame
-- DO NOT create a square or vertical composition centered in empty space
+- SPATIAL COMPOSITION: Describe elements positioned across LEFT, CENTER, and RIGHT zones of the canvas. Elements should flow horizontally connecting all three zones.
+- Use horizontal compositional devices: flowing lines, repeating patterns, pathways, horizons, or distributed subjects that span left-to-right
+- DO NOT create a single centered square or circular element with empty space around it
 - DO NOT leave blank margins, borders, or padding around the illustration
 - The artwork must extend completely to the left edge, right edge, top edge, and bottom edge of the 16:9 canvas
-- Use the full WIDTH of the landscape format — spread design elements horizontally across the frame
+- Think: ultra-wide cinema frame, panoramic landscape photography, horizontal mural
 - Abstract human figures or symbolic elements (not detailed faces or stick people)
 - Visual metaphor preferred over literal workplace scenes
 - Subtle sense of motion or progress
@@ -85,10 +87,17 @@ Aspect ratio:
 
 Framing:
 - MANDATORY: Full-bleed composition that fills the entire 16:9 LANDSCAPE frame from edge to edge
-- CRITICAL: The composition must be WIDE and HORIZONTAL, not square
-- DO NOT create a square illustration in the center with empty space on the sides
+- CRITICAL SPATIAL STRUCTURE: Describe visual elements across three horizontal zones:
+  * LEFT ZONE (left third): What appears here?
+  * CENTER ZONE (middle third): What appears here?
+  * RIGHT ZONE (right third): What appears here?
+- Elements should flow, connect, or repeat across these zones to create horizontal continuity
+- Examples of effective wide compositions: flowing abstract pathways from left to right, repeating geometric patterns across the width, horizon lines with distributed elements, multiple figures or objects arranged horizontally
+- ABSOLUTELY DO NOT create a centered square illustration with empty space on the sides
+- ABSOLUTELY DO NOT place a centered geometric square, circle, or portrait as the main focal element
 - Design elements must extend completely to the left and right edges of the frame
-- The artwork should leverage the full HORIZONTAL width of the 16:9 format
+- Think PANORAMIC and HORIZONTAL — like an ultra-wide cinema screen or landscape mural
+- The artwork should leverage the FULL HORIZONTAL WIDTH with visual narrative flowing left to right
 - No padding, margins, borders, or empty space around the illustration whatsoever
 
 ---
@@ -102,7 +111,13 @@ Framing:
 ### OUTPUT FORMAT
 Return a **strict JSON object** with the following keys:
 
-- prompt: A detailed, high-quality image-generation prompt
+- prompt: A detailed, high-quality image-generation prompt. CRITICAL INSTRUCTIONS FOR THE PROMPT:
+  * Begin by describing the WIDE 16:9 panoramic format explicitly
+  * Describe what visual elements appear in the LEFT ZONE, CENTER ZONE, and RIGHT ZONE
+  * Use spatial language: "on the left side", "flowing across to", "extending from left edge to right edge", "spanning the width"
+  * Include compositional devices that force horizontal spread: "repeating pattern across the width", "pathway extending left to right", "horizon line with distributed elements"
+  * Explicitly state: "Elements span from the far left edge to the far right edge"
+  * End with: "Full-bleed panoramic composition filling the entire 16:9 canvas"
 - alt_text: Accessible, descriptive alt text (≤ 140 characters)
 - suggested_palette: List of 3–5 hex color codes aligned with the brand
 - aspect_ratio: "16:9"

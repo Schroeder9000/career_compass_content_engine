@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -37,6 +36,35 @@ DRAFT:
 {draft}
 """
 
+REVISION_TEMPLATE = """
+You are the senior editor for Career Compass, an online career guidance platform.
+
+You previously edited this draft, and it has now been evaluated by our Chief Content Officer.
+The evaluation identified specific issues that need to be addressed before publication.
+
+Your task: Address the feedback below while maintaining the overall structure and quality of your previous edit.
+
+EVALUATION FEEDBACK:
+{feedback}
+
+CURRENT VERSION:
+{draft}
+
+---
+
+Instructions:
+- Focus on the CRITICAL ISSUES identified in the feedback
+- Address each improvement suggestion with concrete changes
+- Maintain word count targets (2,500-3,500 words total, 300-500 words per major section)
+- Paragraphs should vary in length and sentence count for better rhythm
+- Add specific examples, scripts, and details where flagged as generic
+- Deepen emotional resonance and brand voice where noted
+- Remove any "AI-sounding" language specifically called out
+- Do NOT remove good content - only enhance what's already there
+
+Return ONLY the revised Markdown.
+"""
+
 
 @dataclass
 class EditingAgent(BaseAgent):
@@ -44,7 +72,17 @@ class EditingAgent(BaseAgent):
 
     llm: BaseChatModel
 
-    def refine(self, draft_markdown: str) -> AgentResult:
+    def refine(self, draft_markdown: str, feedback: str = None) -> AgentResult:
+        """
+        Edit and refine a draft blog post.
+        
+        Args:
+            draft_markdown: The draft content to edit
+            feedback: Optional evaluation feedback for revision
+            
+        Returns:
+            AgentResult with the edited content
+        """
         # Strip markdown code fences if present in the draft
         draft_cleaned = draft_markdown.strip()
         if draft_cleaned.startswith('```markdown') or draft_cleaned.startswith('```'):
@@ -57,7 +95,12 @@ class EditingAgent(BaseAgent):
                 lines = lines[:-1]
             draft_cleaned = '\n'.join(lines)
         
-        prompt = EDIT_TEMPLATE.format(draft=draft_cleaned)
+        # Choose template based on whether we have feedback
+        if feedback:
+            prompt = REVISION_TEMPLATE.format(draft=draft_cleaned, feedback=feedback)
+        else:
+            prompt = EDIT_TEMPLATE.format(draft=draft_cleaned)
+        
         result = self.run(prompt)
         
         # Also strip from the result if the LLM adds them back

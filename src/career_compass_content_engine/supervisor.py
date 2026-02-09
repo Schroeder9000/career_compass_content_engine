@@ -12,6 +12,7 @@ from .agents.publishing_agent import PublishingAgent
 from .agents.research_agent import ResearchAgent
 from .agents.writing_agent import WritingAgent
 from .agents.editing_agent import EditingAgent
+from .agents.evaluation_agent import EvaluationAgent
 from .agents.image_generator import ImageGenerator
 from .config import Settings, get_settings
 from .rag import RAGPipeline
@@ -101,6 +102,11 @@ class Supervisor:
             name="Senior Editor",
             system_prompt="Senior editor who polishes drafts to publish-ready quality.",
         )
+        self.evaluation_agent = EvaluationAgent(
+            llm=self.llm_editing,
+            name="Chief Content Officer",
+            system_prompt="Chief Content Officer who evaluates content quality against publishing standards.",
+        )
         self.image_agent = ImageAgent(
             llm=self.llm_image,
             name="Visual Designer",
@@ -117,6 +123,8 @@ class Supervisor:
         research_result = self.research_agent.recommend(existing_content, context)
         research_payload = _safe_parse(research_result.raw_response)
         
+        print(f"📋 Research payload keys: {list(research_payload.keys())}")
+        
         # Get separate contexts for different agent types
         text_context = self.rag.as_text_context(query=research_payload.get("topic", "Career Compass"))
         image_context = self.rag.as_image_context(query=research_payload.get("topic", "Career Compass"))
@@ -124,12 +132,40 @@ class Supervisor:
         blog_result = self.writer_agent.draft(research_payload, text_context, context)
         blog_content = blog_result.content.get("message", str(blog_result.raw_response))
 
-        # Run editing/refinement step
+        # Run editing/refinement step with evaluation loop (max 2 iterations)
         edited_result = self.editor_agent.refine(blog_content)
         edited_content = edited_result.content.get("message", str(edited_result.raw_response))
+        
+        max_revisions = 2
+        for revision_count in range(max_revisions):
+            # Evaluate the edited content
+            evaluation = self.evaluation_agent.evaluate(edited_content)
+            
+            # If content passes threshold or we've hit max revisions, proceed
+            if evaluation.passes_threshold or revision_count == max_revisions - 1:
+                if not evaluation.passes_threshold:
+                    print(f"⚠️  Content below threshold after {max_revisions} revisions (score: {evaluation.average_score:.1f}/10). Proceeding to publish.")
+                else:
+                    print(f"✅ Content approved (score: {evaluation.average_score:.1f}/10) after {revision_count + 1} iteration(s)")
+                break
+            
+            # Content needs revision - format feedback and re-edit
+            print(f"🔄 Revision {revision_count + 1}: Content needs improvement (score: {evaluation.average_score:.1f}/10)")
+            feedback_text = self.evaluation_agent.format_feedback_for_editor(evaluation)
+            edited_result = self.editor_agent.refine(edited_content, feedback=feedback_text)
+            edited_content = edited_result.content.get("message", str(edited_result.raw_response))
 
         image_result = self.image_agent.design(research_payload, image_context, context)
-        image_plan = _safe_parse(image_result.raw_response)
+        
+        # Check if image agent returned an error
+        if isinstance(image_result.content, dict) and "error" in image_result.content:
+            print(f"⚠️  Image generation failed: {image_result.content.get('error')}")
+            print(f"    Raw response: {image_result.content.get('raw', 'N/A')[:200]}")
+            image_plan = {}
+        else:
+            image_plan = _safe_parse(image_result.raw_response)
+        
+        print(f"📸 Image plan generated: {bool(image_plan.get('prompt'))}")
 
         # If an image prompt was produced, generate and upload the image locally before publishing
         image_file_path = None
@@ -158,11 +194,22 @@ class Supervisor:
                 size = "1024x1024"
 
             # Encourage the model to compose for the requested aspect ratio and fill the entire frame.
+            # STRATEGY: Be very specific about distributing elements LEFT, CENTER, and RIGHT
             prompt_text = image_plan.get("prompt")
             if image_plan.get("aspect_ratio"):
-                prompt_text = f"{prompt_text} CRITICAL COMPOSITION REQUIREMENTS: This must be a WIDE HORIZONTAL landscape illustration that completely fills the entire {image_plan.get('aspect_ratio')} canvas from edge to edge. DO NOT create a square or portrait composition centered in empty space. DO NOT leave any blank margins, borders, or padding. The illustration must extend fully to the left edge, right edge, top edge, and bottom edge. Use the full WIDTH of the landscape format and spread the design elements horizontally across the entire frame."
+                # Use explicit spatial positioning to force horizontal spread
+                prompt_text = (
+                    f"WIDE CINEMATIC PANORAMA in {image_plan.get('aspect_ratio')} format. "
+                    f"COMPOSITION STRUCTURE: Divide the canvas into THREE ZONES - "
+                    f"LEFT THIRD has visual elements, CENTER THIRD has visual elements, RIGHT THIRD has visual elements. "
+                    f"Elements flow and connect across all three zones creating a continuous horizontal narrative. "
+                    f"{prompt_text} "
+                    f"CRITICAL SPATIAL REQUIREMENTS: Visual elements must extend from the FAR LEFT EDGE all the way to the FAR RIGHT EDGE. "
+                    f"Use repeating patterns, flowing lines, or distributed subjects that span the FULL HORIZONTAL WIDTH. "
+                    f"Think ULTRA-WIDE landscape photography or cinema aspect ratio - NEVER a centered square subject with empty sides."
+                )
             else:
-                prompt_text = f"{prompt_text} CRITICAL: Create a full-frame composition that fills the entire canvas edge-to-edge with no borders, padding, or empty space around the illustration."
+                prompt_text = f"FULL-FRAME COMPOSITION: {prompt_text} CRITICAL: Create a full-frame composition that fills the entire canvas edge-to-edge with no borders, padding, or empty space around the illustration."
 
             try:
                 img_path = gen.generate(prompt_text, size=size)
