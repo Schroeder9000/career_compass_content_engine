@@ -59,15 +59,29 @@ REQUIRED STRUCTURE
 3) TL;DR section (use heading "## TL;DR"): 5-8 specific, non-obvious bullets that preview your key insights
 
 4) Main content sections (H2/H3): Follow the outline provided, but adapt headings for natural flow
-   - CRITICAL DEPTH REQUIREMENT: Each major H2 section MUST be 300-500 words minimum (5-8 paragraphs)
-   - Each H3 subsection should be 150-250 words (3-4 paragraphs)
-   - MANDATORY: Include 2-3 SPECIFIC, DETAILED examples per major section with names, situations, dialogue
-   - MANDATORY: Provide exact scripts with actual phrasing (not just "say something like...")
-   - MANDATORY: Build a framework or mental model with a memorable name
-   - CONTRARIAN requirement: Challenge at least one piece of conventional wisdom per major section
-   - EMOTIONAL depth: Explicitly name the feelings (anxiety, imposter syndrome, frustration) and validate them
+   - CRITICAL DEPTH REQUIREMENT: Each major H2 section MUST be at least 500 words minimum (5-8 paragraphs)
+   - Each H3 subsection should be at least 250 words (3-4 paragraphs)
+   - EXAMPLES (use sparingly — quality over quantity): Include 1-2 fully developed examples across the
+     entire article, placed where they provide the most illustrative value. Do NOT add an example to
+     every section — that becomes formulaic and repetitive. A single great example beats five mediocre
+     ones. Each example you do use MUST have:
+     a) A named person (invent a realistic first name)
+     b) Their specific job title and company type (e.g. "Priya, a product manager at a mid-size fintech")
+     c) The exact situation they faced
+     d) What they said or did (use actual dialogue in quotes where relevant)
+     e) The concrete outcome
+   - MANDATORY SCRIPTS: Provide exact word-for-word scripts for any conversation or action described.
+     Never write "you might say something like" — write the actual sentence the reader should say.
+   - OPTIONAL: Build a framework or mental model with a memorable name, as appropriate for the topic
+   - CONTRARIAN requirement: Challenge at least one piece of conventional wisdom per article
+   - MANDATORY EMOTIONAL depth: You must name at least 3 specific emotions across the article with vivid,
+     physical or situational language. Do NOT write "it can feel overwhelming" — write the specific sensation:
+     e.g. "the knot in your chest before hitting send", "the low-grade dread of your Sunday evening",
+     "the particular sting of being talked over in a meeting". Each named emotion must be followed by
+     a sentence that validates it (you are not imagining this, it is real and common) and one that
+     redirects it toward action. This emotional coaching layer is non-negotiable.
    - TACTICAL depth: Give step-by-step instructions with actual timeframes and metrics
-   - Use VARIED paragraph lengths: alternate between 1-2 sentence punchy paragraphs and 5-6 sentence analytical ones
+   - Use VARIED paragraph lengths: alternate between 3-5 sentence punchy paragraphs and 5-11 sentence analytical ones
    - SHOW YOUR REASONING: Explain WHY advice works, not just WHAT to do
 
 5) Additional value-add sections (if relevant to topic - NO GENERIC HEADINGS):
@@ -82,7 +96,7 @@ REQUIRED STRUCTURE
    - Build a personalized growth plan
    - Track weekly wins and career metrics  
    - Get weekly coaching nudges via email
-   - Keep it to 2-3 sentences max, woven into the narrative
+
 
 7) Closing (NO HEADING): 2-4 paragraphs that:
    - Synthesize your key insight without repeating the TL;DR
@@ -90,9 +104,9 @@ REQUIRED STRUCTURE
    - Leave readers with a concrete next step or mindset shift
 
 HUMANNESS & QUALITY RULES
-- DEPTH OVER BREADTH: Fewer sections with more substance beats many shallow sections
+- DEPTH OVER BREADTH: Fewer sections with more substance beats many shallow sections. The content should be authoritative and in-depth, not a surface-level skim.
 - SPECIFIC OVER GENERIC: Use real examples, actual numbers, specific scenarios (e.g., "your Tuesday morning standup" not "team meetings")
-- VARIED RHYTHM: Mix 1-sentence paragraphs with 4-5 sentence analytical paragraphs
+- VARIED RHYTHM: Mix paragraphs with 3-5 sentence punchy paragraphs and 5-11 sentence analytical ones
 - SHOW YOUR WORK: Explain the "why" behind advice, include the reasoning and tradeoffs
 - CONTRARIAN WELCOME: Challenge conventional career advice when you have a defensible alternative view
 - NO FLUFF PHRASES: Avoid "let's dive in", "in today's world", "unlock your potential", "game-changer", "at the end of the day"
@@ -102,7 +116,7 @@ HUMANNESS & QUALITY RULES
 - Each major section should feel like a mini-essay with a clear argument or framework
 
 CONTENT REQUIREMENTS FOR LONG-FORM:
-- Include at least 3-4 specific examples or scenarios per main section
+- Include 1 concrete example with roles, scenarios and resolution with vivid details
 - Provide exact scripts or phrases for difficult conversations when relevant
 - Build frameworks or mental models readers can apply (give them names if helpful)
 - Address the emotional or social dynamics explicitly - the awkwardness, the fear, the office politics

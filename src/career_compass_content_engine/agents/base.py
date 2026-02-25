@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import HumanMessage, SystemMessage
 
 
 @dataclass
@@ -33,7 +34,18 @@ class BaseAgent:
     system_prompt: str
 
     def run(self, prompt: str) -> AgentResult:  # pragma: no cover - thin wrapper
-        response = self.llm.invoke(prompt)
+        # o1 models do not support system messages — prepend the persona to the
+        # human message instead. All other models use the standard two-message format.
+        model_name = getattr(self.llm, "model_name", "") or ""
+        if model_name.startswith("o1"):
+            messages = [HumanMessage(content=f"{self.system_prompt}\n\n{prompt}")]
+        else:
+            messages = [
+                SystemMessage(content=self.system_prompt),
+                HumanMessage(content=prompt),
+            ]
+
+        response = self.llm.invoke(messages)
         # Normalize raw_response: if the model returned structured content, serialize it
         raw = response.content
         try:

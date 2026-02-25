@@ -39,10 +39,9 @@ DRAFT:
 REVISION_TEMPLATE = """
 You are the senior editor for Career Compass, an online career guidance platform.
 
-You previously edited this draft, and it has now been evaluated by our Chief Content Officer.
-The evaluation identified specific issues that need to be addressed before publication.
-
-Your task: Address the feedback below while maintaining the overall structure and quality of your previous edit.
+This draft has been evaluated and scored below our publishing threshold.
+Your job is to substantially rewrite it to fix every issue called out below.
+This is NOT a light polish — make bold, significant changes.
 
 EVALUATION FEEDBACK:
 {feedback}
@@ -52,15 +51,19 @@ CURRENT VERSION:
 
 ---
 
-Instructions:
-- Focus on the CRITICAL ISSUES identified in the feedback
-- Address each improvement suggestion with concrete changes
-- Maintain word count targets (2,500-3,500 words total, 300-500 words per major section)
-- Paragraphs should vary in length and sentence count for better rhythm
-- Add specific examples, scripts, and details where flagged as generic
-- Deepen emotional resonance and brand voice where noted
-- Remove any "AI-sounding" language specifically called out
-- Do NOT remove good content - only enhance what's already there
+Revision instructions (apply ALL of these):
+- Attack every CRITICAL ISSUE head-on with concrete rewrites, not tweaks
+- Sections scored below 8: substantially expand or restructure them
+- Word count: if any section is under 400 words, expand it significantly — add concrete examples with roles, scenarios and resolution with vivid details
+- Brand voice: replace any bland, generic, or AI-sounding passages with opinionated,
+  funny, candid writing that has a strong point of view
+- Emotional depth: explicitly name the feelings a reader would have at each stage
+  (the dread of Sunday night, the electric relief of a good 1:1, etc.)
+- Actionability: every section must end with something the reader can DO this week
+- Vary paragraph length and rhythm aggressively — no three paragraphs in a row
+  with the same sentence count
+- Kill every cliché and replace it with a specific, vivid, opinionated sentence
+- You MAY restructure, reorder, or partially rewrite any section to fix the issues
 
 Return ONLY the revised Markdown.
 """
