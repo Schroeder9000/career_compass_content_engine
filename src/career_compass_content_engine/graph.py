@@ -213,7 +213,11 @@ def build_graph(
         print("🔵 [image_generate] starting...")
         image_plan = state.get("image_plan", {})
         prompt_text = _augment_image_prompt(image_plan)
-        size = _aspect_ratio_to_size(image_plan)
+        # Blog hero images are always 16:9 landscape — hardcode to avoid
+        # falling back to the square 1024x1024 DALL-E 3 default when
+        # the image_plan is missing an aspect_ratio key.
+        size = "1792x1024"
+        print(f"📐 [image_generate] size: {size}")
         image_file_path: Optional[str] = None
         try:
             gen = ImageGenerator()

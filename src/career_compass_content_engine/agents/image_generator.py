@@ -124,7 +124,7 @@ class ImageGenerator:
             return path
         return path
 
-    def generate(self, prompt: str, out_name: Optional[str] = None, size: str = "1024x1024") -> Path:
+    def generate(self, prompt: str, out_name: Optional[str] = None, size: str = "1792x1024") -> Path:
         out_name = out_name or f"img_{abs(hash(prompt)) % (10**8)}.png"
         out_path = self.out_dir / out_name
 
@@ -132,7 +132,7 @@ class ImageGenerator:
         api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key:
             try:
-                print("[ImageGenerator] requesting OpenAI Images API (b64)")
+                print(f"[ImageGenerator] requesting OpenAI Images API (b64) — size: {size}")
                 headers = {
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
