@@ -44,6 +44,10 @@ from .agents.writing_agent import WritingAgent
 from .config import Settings, get_settings
 from .rag import RAGPipeline
 from .state import ContentState
+from .tools.topic_store import TopicStore
+from .tools.gsc_client import GSCClient
+from .tools.ga4_client import GA4Client
+from .tools.serper_client import SerperClient
 
 # ── Pipeline constants (single source of truth) ───────────────────────────────
 MAX_REVISIONS: int = 2        # Max evaluation cycles; 1 edit revision will occur
@@ -122,6 +126,39 @@ def build_graph(
     settings = settings or get_settings()
     rag = rag_pipeline or RAGPipeline.from_examples()
 
+    # ── Data-enrichment tools (all optional — gracefully disabled if creds absent) —
+    topic_store = TopicStore()
+
+    gsc_client: Optional[GSCClient] = None
+    if settings.gsc_service_account_json and settings.gsc_site_url:
+        try:
+            gsc_client = GSCClient(
+                service_account_json=settings.gsc_service_account_json,
+                site_url=settings.gsc_site_url,
+            )
+            print("[research tools] GSC client ready")
+        except Exception as exc:
+            print(f"[research tools] GSC client init failed: {exc}")
+
+    ga4_client: Optional[GA4Client] = None
+    if settings.gsc_service_account_json and settings.ga4_property_id:
+        try:
+            ga4_client = GA4Client(
+                service_account_json=settings.gsc_service_account_json,
+                property_id=settings.ga4_property_id,
+            )
+            print("[research tools] GA4 client ready")
+        except Exception as exc:
+            print(f"[research tools] GA4 client init failed: {exc}")
+
+    serper_client: Optional[SerperClient] = None
+    if settings.serper_api_key:
+        try:
+            serper_client = SerperClient(api_key=settings.serper_api_key)
+            print("[research tools] Serper client ready")
+        except Exception as exc:
+            print(f"[research tools] Serper client init failed: {exc}")
+
     # ── Agent instantiation ────────────────────────────────────────────────────
     research_agent = ResearchAgent(
         llm=build_llm(settings, "research"),
@@ -165,7 +202,61 @@ def build_graph(
 
     def node_research(state: ContentState) -> dict:
         print("🔵 [research] starting...")
-        result = research_agent.recommend(state["existing_content"], state["context"])
+
+        # ── 1. Build performance_context from GSC + GA4 ───────────────────────────────────
+        perf_parts = []
+        gsc_queries: list = []  # reused for Serper targeting
+        if gsc_client:
+            try:
+                print("📁 [research] fetching GSC data...")
+                gsc_summary = gsc_client.fetch_performance_summary(days=90, query_limit=30)
+                perf_parts.append(gsc_summary)
+                # Extract opportunity queries (position 4–20) for Serper
+                raw_queries = gsc_client.fetch_top_queries(days=90, row_limit=30)
+                gsc_queries = [
+                    q["query"] for q in raw_queries
+                    if 4 <= q["position"] <= 20 and q["impressions"] >= 50
+                ][:3]
+                print(f"✅ [research] GSC loaded ({len(raw_queries)} queries)")
+            except Exception as exc:
+                print(f"⚠️  [research] GSC fetch failed: {exc}")
+
+        if ga4_client:
+            try:
+                print("📁 [research] fetching GA4 data...")
+                ga4_summary = ga4_client.fetch_engagement_summary(days=90)
+                perf_parts.append(ga4_summary)
+                print("✅ [research] GA4 loaded")
+            except Exception as exc:
+                print(f"⚠️  [research] GA4 fetch failed: {exc}")
+
+        performance_context = "\n\n".join(perf_parts) if perf_parts else None
+
+        # ── 2. Build competitor_context from Serper ──────────────────────────────────
+        competitor_context = None
+        if serper_client and gsc_queries:
+            try:
+                print(f"🔍 [research] running Serper on {len(gsc_queries)} opportunity quer(ies)...")
+                competitor_context = serper_client.competitor_summary(gsc_queries)
+                print("✅ [research] Serper SERP snapshot loaded")
+            except Exception as exc:
+                print(f"⚠️  [research] Serper fetch failed: {exc}")
+
+        # ── 3. Append topic history to existing_content ──────────────────────────────
+        history_block = topic_store.format_history_for_prompt()
+        enriched_existing = (
+            state["existing_content"] + "\n\n" + history_block
+            if state.get("existing_content")
+            else history_block
+        )
+
+        # ── 4. Run research agent ──────────────────────────────────────────────────
+        result = research_agent.recommend(
+            enriched_existing,
+            state["context"],
+            performance_context=performance_context,
+            competitor_context=competitor_context,
+        )
         research_payload = _safe_parse(result.raw_response)
         topic = research_payload.get("topic", "Career Compass")
         print(f"📋 [research] topic: {research_payload.get('suggested_title', topic)}")
@@ -300,6 +391,27 @@ def build_graph(
         )
         status = result.get("status", "unknown")
         print(f"✅ [publish] done — status: {status}")
+
+        # Record this run in the persistent topic history
+        research_payload = state.get("research_payload", {})
+        try:
+            webflow_item_id = (
+                result.get("item", {}).get("id")
+                or result.get("id")
+            )
+            topic_store.append(
+                topic=research_payload.get("topic", ""),
+                slug=research_payload.get("suggested_title", ""),
+                suggested_title=research_payload.get("suggested_title", ""),
+                final_score=state.get("evaluation_avg", 0.0),
+                revision_count=state.get("revision_count", 0),
+                evaluation_passed=state.get("evaluation_passed", False),
+                webflow_item_id=webflow_item_id,
+            )
+            print("💾 [publish] run recorded to topic history")
+        except Exception as exc:
+            print(f"⚠️  [publish] topic history write failed: {exc}")
+
         return {"publish_result": result}
 
     # ── Routing (conditional edges) ────────────────────────────────────────────

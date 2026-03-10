@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.embeddings import Embeddings
@@ -13,16 +16,33 @@ from langchain_openai import OpenAIEmbeddings
 
 
 EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
+CACHE_DIR = Path(".cache/faiss_index")
 
 SUPPORTED_SUFFIXES = {".md", ".txt", ".json"}
 
+# Chunk size / overlap for splitting long example articles before embedding.
+# Smaller chunks → more precise retrieval; 800 tokens is a good balance.
+_CHUNK_SIZE = 800
+_CHUNK_OVERLAP = 100
+
+
+def _source_fingerprint(directories: List[Path]) -> str:
+    """Compute an MD5 hash of all source file mtimes + sizes to detect changes."""
+    parts = []
+    for d in directories:
+        for path in sorted(d.rglob("*")):
+            if path.is_file() and path.suffix.lower() in SUPPORTED_SUFFIXES:
+                stat = path.stat()
+                parts.append(f"{path}:{stat.st_mtime}:{stat.st_size}")
+    return hashlib.md5("\n".join(parts).encode()).hexdigest()
 
 
 @dataclass
 class RAGPipeline:
     """Simple RAG pipeline using local examples for grounding content.
-    
+
     Maintains separate vectorstores for text (writing/editing) and images (image design).
+    Indexes are persisted to .cache/faiss_index/ and only rebuilt when source files change.
     """
 
     embeddings: Embeddings
@@ -30,25 +50,77 @@ class RAGPipeline:
     image_vectorstore: FAISS
 
     @classmethod
-    def from_examples(cls, examples_dir: Path | None = None) -> "RAGPipeline":
+    def from_examples(cls, examples_dir: Optional[Path] = None) -> "RAGPipeline":
         directory = examples_dir or EXAMPLES_DIR
         text_dir = directory / "text"
         image_dir = directory / "images"
 
         text_dir.mkdir(parents=True, exist_ok=True)
         image_dir.mkdir(parents=True, exist_ok=True)
-
-        # Load text and image documents separately
-        text_documents = _load_documents([text_dir])
-        image_documents = _load_documents([image_dir])
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
         embeddings = OpenAIEmbeddings()
-        
-        # Create separate vectorstores
-        text_vectorstore = FAISS.from_documents(text_documents, embeddings) if text_documents else FAISS.from_texts([""], embeddings)
-        image_vectorstore = FAISS.from_documents(image_documents, embeddings) if image_documents else FAISS.from_texts([""], embeddings)
-        
-        return cls(embeddings=embeddings, text_vectorstore=text_vectorstore, image_vectorstore=image_vectorstore)
+        fingerprint = _source_fingerprint([text_dir, image_dir])
+        fingerprint_file = CACHE_DIR / "fingerprint.txt"
+        text_index_path = CACHE_DIR / "text"
+        image_index_path = CACHE_DIR / "image"
+
+        cached_fingerprint = (
+            fingerprint_file.read_text(encoding="utf-8").strip()
+            if fingerprint_file.exists()
+            else None
+        )
+
+        if (
+            cached_fingerprint == fingerprint
+            and text_index_path.exists()
+            and image_index_path.exists()
+        ):
+            print("[RAG] loading persisted FAISS indexes from cache...")
+            text_vectorstore = FAISS.load_local(
+                str(text_index_path), embeddings, allow_dangerous_deserialization=True
+            )
+            image_vectorstore = FAISS.load_local(
+                str(image_index_path), embeddings, allow_dangerous_deserialization=True
+            )
+        else:
+            print("[RAG] source files changed (or first run) — rebuilding FAISS indexes...")
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=_CHUNK_SIZE,
+                chunk_overlap=_CHUNK_OVERLAP,
+                length_function=len,
+            )
+
+            raw_text_docs = _load_documents([text_dir])
+            raw_image_docs = _load_documents([image_dir])
+
+            text_chunks = splitter.split_documents(raw_text_docs) if raw_text_docs else []
+            image_chunks = splitter.split_documents(raw_image_docs) if raw_image_docs else []
+
+            text_vectorstore = (
+                FAISS.from_documents(text_chunks, embeddings)
+                if text_chunks
+                else FAISS.from_texts([""], embeddings)
+            )
+            image_vectorstore = (
+                FAISS.from_documents(image_chunks, embeddings)
+                if image_chunks
+                else FAISS.from_texts([""], embeddings)
+            )
+
+            text_vectorstore.save_local(str(text_index_path))
+            image_vectorstore.save_local(str(image_index_path))
+            fingerprint_file.write_text(fingerprint, encoding="utf-8")
+            print(
+                f"[RAG] indexes saved — {len(text_chunks)} text chunks, "
+                f"{len(image_chunks)} image chunks"
+            )
+
+        return cls(
+            embeddings=embeddings,
+            text_vectorstore=text_vectorstore,
+            image_vectorstore=image_vectorstore,
+        )
 
     def retrieve_text(self, query: str, k: int = 4) -> List[Document]:
         """Retrieve text examples for writing and editing."""

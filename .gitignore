@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+# Google service account key — contains private key, never commit
+*.service_account.json
+service_account*.json
+*_sa_key.json

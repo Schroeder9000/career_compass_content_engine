@@ -22,6 +22,14 @@ class Settings:
     webflow_category_id: Optional[str] = None
     modal_secret_name: Optional[str] = None
     base_url: str = "https://api.webflow.com/v2"
+    # Google Search Console — path to a service account JSON key file
+    gsc_service_account_json: Optional[str] = None
+    # The verified site URL registered in GSC (e.g. "https://yoursite.com/")
+    gsc_site_url: Optional[str] = None
+    # Google Analytics 4 — same service account key file can be reused
+    ga4_property_id: Optional[str] = None
+    # Serper.dev API key for real-time SERP data
+    serper_api_key: Optional[str] = None
 
 
     @classmethod
@@ -33,8 +41,11 @@ class Settings:
             webflow_collection_id=os.environ.get("WEBFLOW_COLLECTION_ID"),
             webflow_author_id=os.environ.get("WEBFLOW_AUTHOR_ID"),
             webflow_category_id=os.environ.get("WEBFLOW_CATEGORY_ID"),
-
             modal_secret_name=os.environ.get("MODAL_SECRET_NAME"),
+            gsc_service_account_json=os.environ.get("GSC_SERVICE_ACCOUNT_JSON"),
+            gsc_site_url=os.environ.get("GSC_SITE_URL"),
+            ga4_property_id=os.environ.get("GA4_PROPERTY_ID"),
+            serper_api_key=os.environ.get("SERPER_API_KEY"),
         )
 
     def validate(self) -> None:

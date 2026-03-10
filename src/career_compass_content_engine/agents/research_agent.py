@@ -31,6 +31,23 @@ Existing content (snippets or structured data like title, slug, summary, tags, p
 
 ---
 
+### REAL PERFORMANCE DATA
+Use this to identify traffic patterns, ranking opportunities, and content gaps.
+If a query has high impressions but low CTR, it signals a topic worth writing about.
+If a page has high traffic but low engagement, it may need a companion piece or update.
+
+{performance_context}
+
+---
+
+### LIVE SERP COMPETITIVE SNAPSHOT
+Use this to understand what currently ranks for your target keywords.
+DO NOT repeat the same angles as competitors. Choose a more specific, contrarian, or deeper take.
+
+{competitor_context}
+
+---
+
 ### WHAT TO DO (STRICT PROCESS)
 
 1) Corpus audit:
@@ -106,11 +123,18 @@ class ResearchAgent(BaseAgent):
 
     llm: BaseChatModel
 
-    def recommend(self, existing_content: str, context: AgentContext, performance_context: Optional[str] = None) -> AgentResult:
+    def recommend(
+        self,
+        existing_content: str,
+        context: AgentContext,
+        performance_context: Optional[str] = None,
+        competitor_context: Optional[str] = None,
+    ) -> AgentResult:
         prompt = RESEARCH_TEMPLATE.format(
             existing_content=existing_content or "No prior content provided.",
             context=f"Voice: {context.brand_voice}\nAudience: {context.target_audience}",
-            performance_context=performance_context or "No performance hints provided.",
+            performance_context=performance_context or "No GSC/GA performance data provided.",
+            competitor_context=competitor_context or "No SERP competitive data provided.",
         )
         # Invoke model and parse JSON output robustly
         try:
