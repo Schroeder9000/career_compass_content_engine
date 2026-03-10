@@ -29,7 +29,12 @@ class GSCClient:
 
     def __init__(self, service_account_json: str, site_url: str) -> None:
         self.service_account_json = service_account_json
-        self.site_url = site_url.rstrip("/") + "/"  # GSC requires trailing slash
+        # Domain properties use "sc-domain:example.com" format — no trailing slash.
+        # URL-prefix properties require a trailing slash (e.g. "https://example.com/").
+        if site_url.startswith("sc-domain:"):
+            self.site_url = site_url.rstrip("/")
+        else:
+            self.site_url = site_url.rstrip("/") + "/"
         self._service = None  # lazy-loaded
 
     # ── Internal helpers ──────────────────────────────────────────────────────
