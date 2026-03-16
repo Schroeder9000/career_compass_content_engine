@@ -48,6 +48,10 @@ from .tools.topic_store import TopicStore
 from .tools.gsc_client import GSCClient
 from .tools.ga4_client import GA4Client
 from .tools.serper_client import SerperClient
+from .tools.webflow_content_client import WebflowContentClient
+from .tools.competitor_fetcher import CompetitorFetcher
+from .tools.cliche_screener import ClicheScreener
+from .tools.readability_scorer import ReadabilityScorer
 
 # ── Pipeline constants (single source of truth) ───────────────────────────────
 MAX_REVISIONS: int = 2        # Max evaluation cycles; 1 edit revision will occur
@@ -159,6 +163,21 @@ def build_graph(
         except Exception as exc:
             print(f"[research tools] Serper client init failed: {exc}")
 
+    webflow_content_client: Optional[WebflowContentClient] = None
+    if settings.webflow_api_token and settings.webflow_collection_id:
+        try:
+            webflow_content_client = WebflowContentClient(
+                api_token=settings.webflow_api_token,
+                collection_id=settings.webflow_collection_id,
+            )
+            print("[research tools] Webflow content client ready")
+        except Exception as exc:
+            print(f"[research tools] Webflow content client init failed: {exc}")
+
+    competitor_fetcher = CompetitorFetcher()
+    cliche_screener = ClicheScreener()
+    readability_scorer = ReadabilityScorer()
+
     # ── Agent instantiation ────────────────────────────────────────────────────
     research_agent = ResearchAgent(
         llm=build_llm(settings, "research"),
@@ -232,22 +251,51 @@ def build_graph(
 
         performance_context = "\n\n".join(perf_parts) if perf_parts else None
 
-        # ── 2. Build competitor_context from Serper ──────────────────────────────────
+        # ── 2. Build competitor_context from Serper + PAA + live page fetch ─────────
         competitor_context = None
         if serper_client and gsc_queries:
             try:
                 print(f"🔍 [research] running Serper on {len(gsc_queries)} opportunity quer(ies)...")
-                competitor_context = serper_client.competitor_summary(gsc_queries)
-                print("✅ [research] Serper SERP snapshot loaded")
+                serp_summary = serper_client.competitor_summary(gsc_queries)
+                paa_summary = serper_client.paa_summary(gsc_queries)
+
+                # Fetch and summarize actual competitor page content (top 3 URLs)
+                top_urls: list = []
+                try:
+                    raw_serp = serper_client.fetch_serp_snapshot(gsc_queries[:1], num_results=3)
+                    top_urls = [r["link"] for r in raw_serp if r.get("link")][:3]
+                except Exception:
+                    pass
+                fetched_content = ""
+                if top_urls:
+                    print(f"🌐 [research] fetching {len(top_urls)} competitor page(s)...")
+                    fetched_content = competitor_fetcher.summarize_urls(top_urls)
+
+                competitor_context = "\n\n".join(
+                    part for part in [serp_summary, paa_summary, fetched_content] if part
+                )
+                print("✅ [research] Serper SERP + PAA + competitor content loaded")
             except Exception as exc:
                 print(f"⚠️  [research] Serper fetch failed: {exc}")
 
-        # ── 3. Append topic history to existing_content ──────────────────────────────
+        # ── 3. Append topic history + live Webflow corpus to existing_content ─────────
         history_block = topic_store.format_history_for_prompt()
-        enriched_existing = (
-            state["existing_content"] + "\n\n" + history_block
-            if state.get("existing_content")
-            else history_block
+        live_cms_block = ""
+        if webflow_content_client:
+            try:
+                print("📚 [research] fetching live Webflow CMS corpus...")
+                live_cms_block = webflow_content_client.published_content_summary()
+                print("✅ [research] Webflow CMS corpus loaded")
+            except Exception as exc:
+                print(f"⚠️  [research] Webflow CMS fetch failed: {exc}")
+
+        enriched_existing = "\n\n".join(
+            part for part in [
+                state.get("existing_content", ""),
+                history_block,
+                live_cms_block,
+            ]
+            if part
         )
 
         # ── 4. Run research agent ──────────────────────────────────────────────────
@@ -326,12 +374,32 @@ def build_graph(
         feedback = state.get("feedback_text") or None
         is_revision = bool(feedback)
 
+        # ── Pre-edit: run cliché screener and readability scorer ──────────────
+        cliche_report = cliche_screener.screen(source)
+        readability_report = readability_scorer.score(source)
+
+        cliche_feedback = cliche_report.feedback_for_editor()
+        readability_feedback = readability_report.feedback_for_editor()
+
+        if cliche_report.flag_count > 0:
+            print(f"🔍 [edit] cliché screener: {cliche_report.flag_count} flag(s) found")
+        if readability_report.issues:
+            print(f"📖 [edit] readability: {len(readability_report.issues)} issue(s) — {readability_report.summary().splitlines()[0]}")
+
+        # Merge pre-screen feedback into any existing evaluation feedback
+        pre_screen_block = "\n\n".join(
+            part for part in [cliche_feedback, readability_feedback] if part
+        )
+        combined_feedback = "\n\n".join(
+            part for part in [feedback or "", pre_screen_block] if part
+        ) or None
+
         if is_revision:
             print("🔵 [edit/revision] starting — applying evaluation feedback with bold rewrites...")
-            result = revision_editor_agent.refine(source, feedback=feedback)
+            result = revision_editor_agent.refine(source, feedback=combined_feedback)
         else:
             print("🔵 [edit] starting — first-pass polish...")
-            result = editor_agent.refine(source, feedback=None)
+            result = editor_agent.refine(source, feedback=combined_feedback if pre_screen_block else None)
 
         edited_content = result.content.get("message", str(result.raw_response))
         print("✅ [edit] done")

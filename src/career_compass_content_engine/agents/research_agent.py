@@ -62,9 +62,15 @@ DO NOT repeat the same angles as competitors. Choose a more specific, contrarian
     - “Answerable” (supports a crisp definition, steps, examples, checklist)
     - Citable (contains frameworks, numbered steps, tables/checklists, short definitions)
     - Naturally aligned with Career Compass (growth, clarity, confidence, practical action)    
-    IMPORTANT: Title diversity
+    IMPORTANT: Title diversity & content format bias
     - DO NOT start titles with "Navigating" - this word is overused and should be avoided entirely
     - Vary your title structure. Avoid repetitive patterns like "Navigating..." or starting every title with "How to..."
+    - AVOID pure list-format topics ("X Ways to...", "X Tips for...") as the primary format unless
+      the topic genuinely requires enumeration. Prefer argument-driven, essay-style topics that
+      build a central thesis. List formats can be used as a section structure inside the outline,
+      but the overall article should feel like thought-leadership, not a roundup.
+    - When structuring the outline, favor a narrative arc over a sequential checklist: the sections
+      should advance a central argument rather than simply be the next item in a list.
     - Mix patterns: questions, contrarian takes, direct statements, frameworks, numbered lists
     - Examples of diverse patterns:
       * "The [Number] [Thing] That [Result]" (e.g., "The 5 Mistakes That Tank Your First 90 Days")

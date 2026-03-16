@@ -24,15 +24,21 @@ SCORING CRITERIA (0-10 scale for each):
    - Deduct points if content feels surface-level or lacks depth of analysis, nuance, or insight
 
 2. **Specific Examples & Details** (0-10)
-   - 10 = 1-2 fully developed examples placed purposefully where they add the most value: named character,
-     specific job title and company type, exact situation, dialogue, and concrete outcome. The rest of
-     the article uses vivid specificity (real numbers, exact phrases, concrete scenarios) without
-     relying on named-person vignettes in every section.
-   - 8 = 1 strong example exists but lacks one element (e.g. no dialogue, or outcome is vague)
-   - 5 = Examples exist but are generic (no names, no dialogue, no concrete outcome) OR are copy-pasted
-     into every section making the article feel formulaic and repetitive
-   - 2 = Only abstract advice with no illustrative examples anywhere
-   - 0 = Purely theoretical, nothing grounded in a real scenario
+   - 10 = The article is vivid and concrete throughout. Where a named-character story is the most
+     natural way to illustrate a point, it is fully developed (name, job title and company type,
+     exact situation, dialogue, concrete outcome). Where a story isn't needed, vivid specificity
+     carries the weight: real numbers, exact role names, concrete day/situation framing, word-for-word
+     scripts. Not every article requires a character vignette — the standard is specificity, not format.
+   - 8 = The article is consistently specific. Most sections use concrete details (named roles, exact
+     phrases, real scenarios) rather than abstract generalities. A character vignette may or may not
+     be present; what matters is that advice feels grounded, not theoretical.
+   - 6 = A mix: some sections are vivid and concrete, but others fall back on abstract, generic advice
+     ("you might find yourself in a meeting...", "many professionals struggle with...") with nothing
+     to anchor the point in reality.
+   - 3 = Mostly abstract advice throughout. Attempts at examples exist but none are grounded — no
+     names, no specific scenarios, no dialogue, no concrete outcomes.
+   - 0 = Purely theoretical. Nothing in the article could not have been written without any real-world
+     context or experience.
 
 3. **Brand Voice Quality** (0-10)
    - 10 = Warm, candid, funny, opinionated, contrarian where appropriate
@@ -57,7 +63,7 @@ SCORING CRITERIA (0-10 scale for each):
    - 5 = Competent but pedestrian, paragraphs of similar length and sentence count
    - 0 = Generic, repetitive, "AI-sounding" language
 
-OVERALL QUALITY THRESHOLD: Average score must be ≥ 9.0 to publish
+OVERALL QUALITY THRESHOLD: Average score must be ≥ 8.5 to publish
 
 ---
 

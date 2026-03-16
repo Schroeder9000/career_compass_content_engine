@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
+from typing import Optional
+
 from .base import AgentResult, BaseAgent
 
 
@@ -24,6 +26,27 @@ Editing rules:
 - Remove any "AI-sounding" lines or generic summaries - replace with specific, opinionated takes.
 - Add emotional depth: name feelings explicitly (e.g., "the knot in your stomach when...", "the relief of finally...")
 - Natural Career Compass integration: weave it into the conclusion organically, not as a separate section
+
+Four specific failure modes to check and fix:
+1. OPENING HOOK: If the article opens with "Picture this: It's [day/time]..." or any stamped-scene
+   variation, rewrite the first 2-3 paragraphs entirely. Replace with a direct observation, a
+   provocative claim, a sharp question, or a brief first-person anecdote. The goal is to hook
+   with an idea, not a scene-setting device.
+2. BRAND VOICE IN INTRO & CONCLUSION: These are the highest-risk zones for AI-sounding language.
+   Read the opening two paragraphs and the closing two paragraphs closely. Hunt for and replace:
+   - Hype phrases: "game-changer", "secret weapon", "unlock opportunities", "skyrocket", "catapult"
+   - Vague stakes-setting: "cutthroat job market", "fast-paced world", "more competitive than ever"
+   - Empty escalators: "the difference can be monumental", "opening doors that would otherwise remain closed"
+   Replace each one with a specific, opinionated, concrete sentence that makes the same point
+   without reaching for a cliché. The intro should sound like a smart friend talking, not a LinkedIn post.
+3. LISTICLE FEEL: If the article reads like a numbered roundup (each H2 is just the next item
+   in a list with no connecting argument), reframe it as thought-leadership. Add transitional
+   reasoning between sections that shows how each point builds on the last. The article should
+   feel like it's advancing a thesis, not ticking boxes.
+4. LATE-SECTION THINNESS: Read the second half of the article carefully. If paragraphs after
+   the midpoint are falling into a repetitive 3-sentence pattern, expand them. Each H2 section
+   in the second half must have at least one paragraph of 6+ sentences that goes analytically
+   deep — explaining mechanism, tradeoffs, or nuance — before landing the conclusion.
 
 Instructions on style and tone:
 - Push the writing to be more elevated, long-form thought leadership. Go on deep dives when appropriate.
@@ -59,7 +82,15 @@ Revision instructions (apply ALL of these):
   funny, candid writing that has a strong point of view
 - Emotional depth: explicitly name the feelings a reader would have at each stage
   (the dread of Sunday night, the electric relief of a good 1:1, etc.)
-- Actionability: every section must end with something the reader can DO this week
+- Actionability: every section must contain something the reader can DO — but VARY how you deliver it.
+  Do NOT close every section with the same bold "**Action for This Week:**" label; that pattern becomes
+  wallpaper and readers stop reading it. Instead, rotate across these delivery styles:
+    * Woven into the final paragraph as a natural sentence ("The move this week is to...")
+    * A direct imperative that flows from the argument ("Pick one stakeholder and send that email today.")
+    * A concrete question for the reader to sit with
+    * Only occasionally as a bold callout — and vary the label ("Try This", "Your Move", etc.)
+  The goal is that every section leaves the reader knowing what to do next, without every section
+  sounding identical.
 - Vary paragraph length and rhythm aggressively — no three paragraphs in a row
   with the same sentence count
 - Kill every cliché and replace it with a specific, vivid, opinionated sentence
@@ -75,7 +106,7 @@ class EditingAgent(BaseAgent):
 
     llm: BaseChatModel
 
-    def refine(self, draft_markdown: str, feedback: str = None) -> AgentResult:
+    def refine(self, draft_markdown: str, feedback: Optional[str] = None) -> AgentResult:
         """
         Edit and refine a draft blog post.
         

@@ -76,6 +76,18 @@ REQUIRED STRUCTURE
    - Explain why this matters NOW for early-career professionals
    - Set up your contrarian or nuanced take
    - Lead naturally into the substance
+   BANNED HOOK PATTERNS — do NOT open with any of these:
+   - "Picture this: It's [day] morning/Sunday night..."
+   - "It's [time], and you're staring at..."
+   - "Imagine it's your first day..."
+   - Any variation of a "set the scene" time-stamped scenario as the very first sentence
+   Instead, open with a sharp observation, a direct statement of the problem, a provocative question,
+   a counterintuitive claim, or a brief first-person anecdote from Data Dave's career story.
+   Examples of strong openers:
+   - A declarative truth: "Most early-career professionals spend their first year optimizing for the wrong thing."
+   - A provocative question: "What if the advice you've been given about standing out at work is actively holding you back?"
+   - A first-person moment: "The worst feedback I ever got came wrapped in the nicest possible words."
+   - A contrarian claim followed by a defense: "Hustle culture didn't ruin your generation's work ethic. Bad onboarding did."
 
 3) TL;DR section (use heading "## TL;DR"): 5-8 specific, non-obvious bullets that preview your key insights
 
@@ -103,6 +115,18 @@ REQUIRED STRUCTURE
      redirects it toward action. This emotional coaching layer is non-negotiable.
    - TACTICAL depth: Give step-by-step instructions with actual timeframes and metrics
    - Use VARIED paragraph lengths: alternate between 3-5 sentence punchy paragraphs and 5-11 sentence analytical ones
+   - SECTION ENDING VARIETY: Do NOT close every H2 section with the same bold "**Action for This Week:**"
+     label. That pattern turns into wallpaper and readers stop reading it. Vary the delivery:
+       * Weave the CTA into the final paragraph as a natural sentence ("The move this week is to...")
+       * Use a direct imperative that flows from the section argument
+       * Occasionally a bold callout — but vary the label and keep it rare (max 2-3 per article)
+     Every section should leave the reader knowing what to do, but through different structural forms.
+   - PARAGRAPH DEPTH RULE (applies especially to sections after the first two H2s): Later sections
+     must NOT fall into a repetitive 3-sentence-per-paragraph rhythm. As you move deeper into the
+     article, paragraphs should get richer, not thinner. At least one paragraph per H2 section in
+     the second half of the article must be 6+ sentences, going into real analytical depth or
+     storytelling detail. If a paragraph is making an important point, stay with it — explain the
+     mechanism, give the counter-argument, show the nuance, then land the conclusion.
    - SHOW YOUR REASONING: Explain WHY advice works, not just WHAT to do
 
 5) Additional value-add sections (if relevant to topic - NO GENERIC HEADINGS):
@@ -123,6 +147,12 @@ REQUIRED STRUCTURE
    - Synthesize your key insight without repeating the TL;DR
    - Provide encouragement that feels personal, not generic
    - Leave readers with a concrete next step or mindset shift
+
+CONTENT FORMAT BIAS:
+- This is a thought-leadership blog, not a listicle. Pure list-style articles ("5 Ways to...", "7 Tips for...") should be used sparingly and only when the topic genuinely calls for enumeration.
+- Prefer essay-style structure: build a central argument across the article, with each H2 section advancing the thesis rather than simply being the next item on a checklist.
+- If the outline provided is list-structured, reframe it as a through-line narrative where possible. The numbered items can still exist as H3s inside a larger H2 argument, but the article should feel like it's going somewhere — building toward a conclusion — not ticking boxes.
+- A great Career Compass post reads like advice from a smart friend who has thought deeply about this topic, not a BuzzFeed roundup.
 
 HUMANNESS & QUALITY RULES
 - DEPTH OVER BREADTH: Fewer sections with more substance beats many shallow sections. The content should be authoritative and in-depth, not a surface-level skim.

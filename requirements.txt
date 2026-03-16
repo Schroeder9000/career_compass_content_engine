@@ -14,4 +14,8 @@ markdown>=3.4.4
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-analytics-data>=0.18.0
+# Readability scoring (optional — pure-Python fallback used when absent)
+textstat>=0.7.3
+# HTML parsing for competitor content fetcher
+beautifulsoup4>=4.12.0
 
