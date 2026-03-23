@@ -4,6 +4,8 @@ langchain-openai>=0.1.16
 langchain-community>=0.2.7
 langchain-text-splitters>=0.2.0
 langgraph>=0.2.0
+langgraph-checkpoint-sqlite>=0.1.0
+langsmith>=0.1.0
 faiss-cpu>=1.8.0
 modal>=0.62.0
 pydantic>=2.7.3
@@ -18,4 +20,7 @@ google-analytics-data>=0.18.0
 textstat>=0.7.3
 # HTML parsing for competitor content fetcher
 beautifulsoup4>=4.12.0
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
 

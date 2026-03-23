@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import List, Dict, Any
+import asyncio
 
 from .agents.base import AgentContext
 from .agents.publishing_agent import WebflowCMS
@@ -103,11 +101,16 @@ def main() -> None:  # pragma: no cover - CLI entry point
         distribution_channels="Webflow blog, LinkedIn, and email newsletter",
     )
     existing_content = load_existing_content()
-    result = supervisor.run_workflow(existing_content, context)
+    result = asyncio.run(supervisor.run_workflow(existing_content, context))
     print("Research recommendation:\n", result.research)
     print("\nGenerated blog post:\n", result.blog_post)
     print("\nImage plan:\n", result.image_plan)
     print("\nPublish result:\n", result.publish_result)
+    print(
+        f"\nToken usage — total: {result.total_tokens} "
+        f"(prompt: {result.prompt_tokens} / completion: {result.completion_tokens})  "
+        f"est. cost: ${result.total_cost_usd:.4f}"
+    )
 
 
 if __name__ == "__main__":

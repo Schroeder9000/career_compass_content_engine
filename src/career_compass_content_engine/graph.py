@@ -15,22 +15,26 @@ START ── node_research ───────┤                         node
 
 Parallel branches
 -----------------
-After node_research, the CONTENT branch (write → edit → evaluate) and the IMAGE
-branch (image_design → image_generate) are queued in the same superstep, so they
-run back-to-back without waiting for each other. The image branch is always shorter
-(one design call + one generation call) and will finish before the content loop's
-first evaluation cycle completes. By the time node_prepare_metadata fires, both
-edited_content and image_file_path are already in shared state.
+All nodes are ``async def``.  After node_research the CONTENT branch
+(write → edit → evaluate) and the IMAGE branch (image_design → image_generate)
+run as truly concurrent async tasks via ``graph.ainvoke()``.
+By the time node_prepare_metadata fires both edited_content and image_file_path
+are already in shared state.
 
-To unlock true I/O-concurrent execution (both branches making LLM calls at the
-same time), define nodes as `async def` and call `graph.ainvoke()` instead of
-`graph.invoke()`.
+Checkpointing
+-------------
+When ``settings.checkpointer_path`` is set (default: ``.cache/checkpoints.db``)
+a LangGraph ``SqliteSaver`` is attached.  A failed run can be resumed from the
+last completed node by passing the same ``thread_id`` in the RunnableConfig.
 """
 from __future__ import annotations
 
+import asyncio
+import contextvars
 import json
+import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from langgraph.graph import END, START, StateGraph
 
@@ -53,6 +57,8 @@ from .tools.competitor_fetcher import CompetitorFetcher
 from .tools.cliche_screener import ClicheScreener
 from .tools.readability_scorer import ReadabilityScorer
 
+logger = logging.getLogger(__name__)
+
 # ── Pipeline constants (single source of truth) ───────────────────────────────
 MAX_REVISIONS: int = 2        # Max evaluation cycles; 1 edit revision will occur
 SCORE_THRESHOLD: float = 8.5  # Average score (0–10) required to pass without revision
@@ -73,6 +79,17 @@ def _safe_parse(raw: str) -> Dict[str, Any]:
             except Exception:
                 return {}
         return {}
+
+
+async def _run_sync(fn: Callable[[], Any]) -> Any:
+    """Run a blocking callable in the default thread-pool executor while
+    propagating the current *contextvars* context (e.g. LangChain callbacks)
+    into the worker thread.  This is required for ``get_openai_callback()``
+    to capture token usage from calls that run on the executor.
+    """
+    ctx = contextvars.copy_context()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: ctx.run(fn))
 
 
 def _augment_image_prompt(image_plan: Dict[str, Any]) -> str:
@@ -122,8 +139,13 @@ def build_graph(
     Build and compile the content pipeline StateGraph.
 
     All agent instances are held in closure scope so the compiled graph is fully
-    self-contained and thread-safe (each call to graph.invoke() creates a fresh
+    self-contained and thread-safe (each call to graph.ainvoke() creates a fresh
     execution context while sharing the agent objects).
+
+    When ``settings.checkpointer_path`` is non-empty a ``SqliteSaver`` is
+    attached, enabling mid-run resume.  Pass a ``thread_id`` in the
+    ``RunnableConfig`` to identify a run; re-using the same ID resumes from
+    the last completed checkpoint.
     """
     from .supervisor import build_llm  # imported here to avoid circular import at module level
 
@@ -140,9 +162,9 @@ def build_graph(
                 service_account_json=settings.gsc_service_account_json,
                 site_url=settings.gsc_site_url,
             )
-            print("[research tools] GSC client ready")
+            logger.info("[research tools] GSC client ready")
         except Exception as exc:
-            print(f"[research tools] GSC client init failed: {exc}")
+            logger.warning("[research tools] GSC client init failed: %s", exc)
 
     ga4_client: Optional[GA4Client] = None
     if settings.gsc_service_account_json and settings.ga4_property_id:
@@ -151,17 +173,17 @@ def build_graph(
                 service_account_json=settings.gsc_service_account_json,
                 property_id=settings.ga4_property_id,
             )
-            print("[research tools] GA4 client ready")
+            logger.info("[research tools] GA4 client ready")
         except Exception as exc:
-            print(f"[research tools] GA4 client init failed: {exc}")
+            logger.warning("[research tools] GA4 client init failed: %s", exc)
 
     serper_client: Optional[SerperClient] = None
     if settings.serper_api_key:
         try:
             serper_client = SerperClient(api_key=settings.serper_api_key)
-            print("[research tools] Serper client ready")
+            logger.info("[research tools] Serper client ready")
         except Exception as exc:
-            print(f"[research tools] Serper client init failed: {exc}")
+            logger.warning("[research tools] Serper client init failed: %s", exc)
 
     webflow_content_client: Optional[WebflowContentClient] = None
     if settings.webflow_api_token and settings.webflow_collection_id:
@@ -170,9 +192,9 @@ def build_graph(
                 api_token=settings.webflow_api_token,
                 collection_id=settings.webflow_collection_id,
             )
-            print("[research tools] Webflow content client ready")
+            logger.info("[research tools] Webflow content client ready")
         except Exception as exc:
-            print(f"[research tools] Webflow content client init failed: {exc}")
+            logger.warning("[research tools] Webflow content client init failed: %s", exc)
 
     competitor_fetcher = CompetitorFetcher()
     cliche_screener = ClicheScreener()
@@ -219,15 +241,15 @@ def build_graph(
 
     # ── Node functions ─────────────────────────────────────────────────────────
 
-    def node_research(state: ContentState) -> dict:
-        print("🔵 [research] starting...")
+    async def node_research(state: ContentState) -> dict:
+        logger.info("🔵 [research] starting...")
 
         # ── 1. Build performance_context from GSC + GA4 ───────────────────────────────────
         perf_parts = []
         gsc_queries: list = []  # reused for Serper targeting
         if gsc_client:
             try:
-                print("📁 [research] fetching GSC data...")
+                logger.info("📁 [research] fetching GSC data...")
                 gsc_summary = gsc_client.fetch_performance_summary(days=90, query_limit=30)
                 perf_parts.append(gsc_summary)
                 # Extract opportunity queries (position 4–20) for Serper
@@ -236,18 +258,18 @@ def build_graph(
                     q["query"] for q in raw_queries
                     if 4 <= q["position"] <= 20 and q["impressions"] >= 50
                 ][:3]
-                print(f"✅ [research] GSC loaded ({len(raw_queries)} queries)")
+                logger.info("✅ [research] GSC loaded (%d queries)", len(raw_queries))
             except Exception as exc:
-                print(f"⚠️  [research] GSC fetch failed: {exc}")
+                logger.warning("⚠️  [research] GSC fetch failed: %s", exc)
 
         if ga4_client:
             try:
-                print("📁 [research] fetching GA4 data...")
+                logger.info("📁 [research] fetching GA4 data...")
                 ga4_summary = ga4_client.fetch_engagement_summary(days=90)
                 perf_parts.append(ga4_summary)
-                print("✅ [research] GA4 loaded")
+                logger.info("✅ [research] GA4 loaded")
             except Exception as exc:
-                print(f"⚠️  [research] GA4 fetch failed: {exc}")
+                logger.warning("⚠️  [research] GA4 fetch failed: %s", exc)
 
         performance_context = "\n\n".join(perf_parts) if perf_parts else None
 
@@ -255,7 +277,7 @@ def build_graph(
         competitor_context = None
         if serper_client and gsc_queries:
             try:
-                print(f"🔍 [research] running Serper on {len(gsc_queries)} opportunity quer(ies)...")
+                logger.info("🔍 [research] running Serper on %d opportunity quer(ies)...", len(gsc_queries))
                 serp_summary = serper_client.competitor_summary(gsc_queries)
                 paa_summary = serper_client.paa_summary(gsc_queries)
 
@@ -268,26 +290,26 @@ def build_graph(
                     pass
                 fetched_content = ""
                 if top_urls:
-                    print(f"🌐 [research] fetching {len(top_urls)} competitor page(s)...")
+                    logger.info("🌐 [research] fetching %d competitor page(s)...", len(top_urls))
                     fetched_content = competitor_fetcher.summarize_urls(top_urls)
 
                 competitor_context = "\n\n".join(
                     part for part in [serp_summary, paa_summary, fetched_content] if part
                 )
-                print("✅ [research] Serper SERP + PAA + competitor content loaded")
+                logger.info("✅ [research] Serper SERP + PAA + competitor content loaded")
             except Exception as exc:
-                print(f"⚠️  [research] Serper fetch failed: {exc}")
+                logger.warning("⚠️  [research] Serper fetch failed: %s", exc)
 
         # ── 3. Append topic history + live Webflow corpus to existing_content ─────────
         history_block = topic_store.format_history_for_prompt()
         live_cms_block = ""
         if webflow_content_client:
             try:
-                print("📚 [research] fetching live Webflow CMS corpus...")
+                logger.info("📚 [research] fetching live Webflow CMS corpus...")
                 live_cms_block = webflow_content_client.published_content_summary()
-                print("✅ [research] Webflow CMS corpus loaded")
+                logger.info("✅ [research] Webflow CMS corpus loaded")
             except Exception as exc:
-                print(f"⚠️  [research] Webflow CMS fetch failed: {exc}")
+                logger.warning("⚠️  [research] Webflow CMS fetch failed: %s", exc)
 
         enriched_existing = "\n\n".join(
             part for part in [
@@ -298,77 +320,85 @@ def build_graph(
             if part
         )
 
-        # ── 4. Run research agent ──────────────────────────────────────────────────
-        result = research_agent.recommend(
-            enriched_existing,
-            state["context"],
-            performance_context=performance_context,
-            competitor_context=competitor_context,
+        # ── 4. Run research agent ───────────────────────────────────────────────────────────
+        logger.debug(
+            "[research] enriched_existing snippet: %.200s", enriched_existing
+        )
+        result = await _run_sync(
+            lambda: research_agent.recommend(
+                enriched_existing,
+                state["context"],
+                performance_context=performance_context,
+                competitor_context=competitor_context,
+            )
         )
         research_payload = _safe_parse(result.raw_response)
+        logger.debug("[research] raw response snippet: %.300s", result.raw_response)
         topic = research_payload.get("topic", "Career Compass")
-        print(f"📋 [research] topic: {research_payload.get('suggested_title', topic)}")
-        print("✅ [research] done")
+        logger.info("📋 [research] topic: %s", research_payload.get("suggested_title", topic))
+        logger.info("✅ [research] done")
         return {
             "research_payload": research_payload,
             "text_context": rag.as_text_context(query=topic),
             "image_context": rag.as_image_context(query=topic),
         }
 
-    def node_write(state: ContentState) -> dict:
-        print("🔵 [write] starting...")
-        result = writer_agent.draft(
-            state["research_payload"],
-            state["text_context"],
-            state["context"],
+    async def node_write(state: ContentState) -> dict:
+        logger.info("🔵 [write] starting...")
+        result = await _run_sync(
+            lambda: writer_agent.draft(
+                state["research_payload"],
+                state["text_context"],
+                state["context"],
+            )
         )
         blog_draft = result.content.get("message", str(result.raw_response))
-        print("✅ [write] done")
+        logger.debug("[write] draft word count: ~%d", len(blog_draft.split()))
+        logger.info("✅ [write] done")
         return {"blog_draft": blog_draft}
 
-    def node_image_design(state: ContentState) -> dict:
+    async def node_image_design(state: ContentState) -> dict:
         """
         Image design runs in a parallel branch alongside the write/edit/evaluate
-        loop. In synchronous mode the branches execute back-to-back in the same
-        superstep; switch to async node functions + graph.ainvoke() for true
-        concurrent I/O.
+        loop. As an async node this branch runs concurrently with node_write when
+        graph.ainvoke() is used.
         """
-        print("🔵 [image_design] starting...")
-        result = image_agent.design(
-            state["research_payload"],
-            state["image_context"],
-            state["context"],
+        logger.info("🔵 [image_design] starting...")
+        result = await _run_sync(
+            lambda: image_agent.design(
+                state["research_payload"],
+                state["image_context"],
+                state["context"],
+            )
         )
+        logger.debug("[image_design] raw response snippet: %.300s", result.raw_response)
         if isinstance(result.content, dict) and "error" in result.content:
-            print(f"⚠️  [image_design] failed: {result.content.get('error')}")
+            logger.warning("⚠️  [image_design] failed: %s", result.content.get("error"))
             image_plan: Dict[str, Any] = {}
         else:
             image_plan = _safe_parse(result.raw_response)
-        print(f"📸 [image_design] plan generated: {bool(image_plan.get('prompt'))}")
-        print("✅ [image_design] done")
+        logger.info("📸 [image_design] plan generated: %s", bool(image_plan.get("prompt")))
+        logger.info("✅ [image_design] done")
         return {"image_plan": image_plan}
 
-    def node_image_generate(state: ContentState) -> dict:
-        print("🔵 [image_generate] starting...")
+    async def node_image_generate(state: ContentState) -> dict:
+        logger.info("🔵 [image_generate] starting...")
         image_plan = state.get("image_plan", {})
         prompt_text = _augment_image_prompt(image_plan)
-        # Blog hero images are always 16:9 landscape — hardcode to avoid
-        # falling back to the square 1024x1024 DALL-E 3 default when
-        # the image_plan is missing an aspect_ratio key.
         size = "1792x1024"
-        print(f"📐 [image_generate] size: {size}")
+        logger.info("📐 [image_generate] size: %s", size)
         image_file_path: Optional[str] = None
         try:
             gen = ImageGenerator()
             gen.openai_api_key = settings.openai_api_key
-            img_path = gen.generate(prompt_text, size=size)
+            img_path = await _run_sync(lambda: gen.generate(prompt_text, size=size))
             image_file_path = str(img_path)
-            print("✅ [image_generate] done")
+            logger.info("✅ [image_generate] done")
         except Exception as exc:
-            print(f"⚠️  [image_generate] failed: {exc}")
+            logger.warning("⚠️  [image_generate] failed: %s", exc)
         return {"image_file_path": image_file_path}
 
-    def node_edit(state: ContentState) -> dict:
+    async def node_edit(state: ContentState) -> dict:
         # On first pass use blog_draft; on revisions use the previous edited_content
         source = state.get("edited_content") or state.get("blog_draft", "")
         feedback = state.get("feedback_text") or None
@@ -382,9 +412,9 @@ def build_graph(
         readability_feedback = readability_report.feedback_for_editor()
 
         if cliche_report.flag_count > 0:
-            print(f"🔍 [edit] cliché screener: {cliche_report.flag_count} flag(s) found")
+            logger.info("🔍 [edit] cliché screener: %d flag(s) found", cliche_report.flag_count)
         if readability_report.issues:
-            print(f"📖 [edit] readability: {len(readability_report.issues)} issue(s) — {readability_report.summary().splitlines()[0]}")
+            logger.info("📖 [edit] readability: %d issue(s) — %s", len(readability_report.issues), readability_report.summary().splitlines()[0])
 
         # Merge pre-screen feedback into any existing evaluation feedback
         pre_screen_block = "\n\n".join(
@@ -395,41 +425,43 @@ def build_graph(
         ) or None
 
         if is_revision:
-            print("🔵 [edit/revision] starting — applying evaluation feedback with bold rewrites...")
-            result = revision_editor_agent.refine(source, feedback=combined_feedback)
+            logger.info("🔵 [edit/revision] starting — applying evaluation feedback with bold rewrites...")
+            result = await _run_sync(lambda: revision_editor_agent.refine(source, feedback=combined_feedback))
         else:
-            print("🔵 [edit] starting — first-pass polish...")
-            result = editor_agent.refine(source, feedback=combined_feedback if pre_screen_block else None)
+            logger.info("🔵 [edit] starting — first-pass polish...")
+            result = await _run_sync(lambda: editor_agent.refine(source, feedback=combined_feedback if pre_screen_block else None))
 
         edited_content = result.content.get("message", str(result.raw_response))
-        print("✅ [edit] done")
+        logger.debug("[edit] edited word count: ~%d", len(edited_content.split()))
+        logger.info("✅ [edit] done")
         return {"edited_content": edited_content, "feedback_text": ""}
 
-    def node_evaluate(state: ContentState) -> dict:
-        print("🔵 [evaluate] starting...")
-        evaluation = evaluation_agent.evaluate(state["edited_content"])
+    async def node_evaluate(state: ContentState) -> dict:
+        logger.info("🔵 [evaluate] starting...")
+        evaluation = await _run_sync(lambda: evaluation_agent.evaluate(state["edited_content"]))
+        logger.debug("[evaluate] raw JSON: %.500s", str(evaluation.raw_json))
         revision_count = state.get("revision_count", 0) + 1
         passes = evaluation.average_score >= SCORE_THRESHOLD
 
-        # Always print per-criterion scores for full visibility
+        # Always log per-criterion scores for full visibility
         score_lines = "  ".join(
             f"{k.replace('_', ' ').title()}: {v:.1f}"
             for k, v in evaluation.scores.items()
         )
-        print(f"📊 [evaluate] scores — {score_lines}")
-        print(f"📊 [evaluate] average: {evaluation.average_score:.1f}/10  (threshold: {SCORE_THRESHOLD})")
+        logger.info("📊 [evaluate] scores — %s", score_lines)
+        logger.info("📊 [evaluate] average: %.1f/10  (threshold: %s)", evaluation.average_score, SCORE_THRESHOLD)
 
         if evaluation.feedback.get("critical_issues"):
-            print("📊 [evaluate] critical issues:")
+            logger.info("📊 [evaluate] critical issues:")
             for issue in evaluation.feedback["critical_issues"]:
-                print(f"   ✗ {issue}")
+                logger.warning("   ✗ %s", issue)
 
         if passes:
-            print(f"✅ [evaluate] approved after {revision_count} cycle(s)")
+            logger.info("✅ [evaluate] approved after %d cycle(s)", revision_count)
         elif revision_count >= MAX_REVISIONS:
-            print(f"⚠️  [evaluate] below threshold after {MAX_REVISIONS} revision(s). Proceeding to publish.")
+            logger.warning("⚠️  [evaluate] below threshold after %d revision(s). Proceeding to publish.", MAX_REVISIONS)
         else:
-            print(f"🔄 [evaluate] queuing revision {revision_count + 1}...")
+            logger.info("🔄 [evaluate] queuing revision %d...", revision_count + 1)
 
         feedback_text = "" if passes else evaluation_agent.format_feedback_for_editor(evaluation)
         return {
@@ -440,25 +472,28 @@ def build_graph(
             "revision_count": revision_count,
         }
 
-    def node_prepare_metadata(state: ContentState) -> dict:
-        print("🔵 [prepare_metadata] starting...")
-        result = publisher.prepare_metadata(state["edited_content"])
+    async def node_prepare_metadata(state: ContentState) -> dict:
+        logger.info("🔵 [prepare_metadata] starting...")
+        result = await _run_sync(lambda: publisher.prepare_metadata(state["edited_content"]))
         metadata_payload = _safe_parse(result.raw_response)
+        logger.debug("[prepare_metadata] payload keys: %s", list(metadata_payload.keys()))
         if not metadata_payload.get("content_ready", True):
             issues = metadata_payload.get("blocking_issues", [])
-            print(f"⚠️  [prepare_metadata] content_ready=False. Blocking issues: {issues}")
-        print("✅ [prepare_metadata] done")
+            logger.warning("⚠️  [prepare_metadata] content_ready=False. Blocking issues: %s", issues)
+        logger.info("✅ [prepare_metadata] done")
         return {"metadata_payload": metadata_payload}
 
-    def node_publish(state: ContentState) -> dict:
-        print("🔵 [publish] starting...")
-        result = publisher.upload_to_webflow(
-            state.get("metadata_payload", {}),
-            state["edited_content"],
-            image_file_path=state.get("image_file_path"),
+    async def node_publish(state: ContentState) -> dict:
+        logger.info("🔵 [publish] starting...")
+        result = await _run_sync(
+            lambda: publisher.upload_to_webflow(
+                state.get("metadata_payload", {}),
+                state["edited_content"],
+                image_file_path=state.get("image_file_path"),
+            )
         )
         status = result.get("status", "unknown")
-        print(f"✅ [publish] done — status: {status}")
+        logger.info("✅ [publish] done — status: %s", status)
 
         # Record this run in the persistent topic history
         research_payload = state.get("research_payload", {})
@@ -476,9 +511,9 @@ def build_graph(
                 evaluation_passed=state.get("evaluation_passed", False),
                 webflow_item_id=webflow_item_id,
             )
-            print("💾 [publish] run recorded to topic history")
+            logger.info("💾 [publish] run recorded to topic history")
         except Exception as exc:
-            print(f"⚠️  [publish] topic history write failed: {exc}")
+            logger.warning("⚠️  [publish] topic history write failed: %s", exc)
 
         return {"publish_result": result}
 
@@ -531,4 +566,16 @@ def build_graph(
     builder.add_edge("node_prepare_metadata", "node_publish")
     builder.add_edge("node_publish", END)
 
-    return builder.compile()
+    # ── Checkpointing ──────────────────────────────────────────────────────────
+    # MemorySaver checkpoints every completed node within a single run so that
+    # a failed node can be retried without re-executing earlier work.  It is
+    # always available (no external dependency) and is fully compatible with
+    # ainvoke.  Cross-process persistence (resuming after a hard crash between
+    # separate Python invocations) requires AsyncSqliteSaver wired into the
+    # Supervisor's async lifecycle — that is left as a future enhancement.
+    from langgraph.checkpoint.memory import MemorySaver
+
+    checkpointer = MemorySaver()
+    logger.info("[graph] MemorySaver checkpointer attached (in-process checkpointing enabled)")
+
+    return builder.compile(checkpointer=checkpointer)
