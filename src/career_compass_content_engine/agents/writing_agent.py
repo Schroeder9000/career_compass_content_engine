@@ -103,18 +103,16 @@ REQUIRED STRUCTURE
      c) The exact situation they faced
      d) What they said or did (use actual dialogue in quotes where relevant)
      e) The concrete outcome
-   - MANDATORY SCRIPTS: Provide exact word-for-word scripts for any conversation or action described.
+   - COACHING SCRIPTS: Provide exact word-for-word scripts for any conversation or action described.
      Never write "you might say something like" — write the actual sentence the reader should say.
    - OPTIONAL: Build a framework or mental model with a memorable name, as appropriate for the topic
    - CONTRARIAN requirement: Challenge at least one piece of conventional wisdom per article
-   - MANDATORY EMOTIONAL depth: You must name at least 3 specific emotions across the article with vivid,
-     physical or situational language. Do NOT write "it can feel overwhelming" — write the specific sensation:
-     e.g. "the knot in your chest before hitting send", "the low-grade dread of your Sunday evening",
-     "the particular sting of being talked over in a meeting". Each named emotion must be followed by
-     a sentence that validates it (you are not imagining this, it is real and common) and one that
-     redirects it toward action. This emotional coaching layer is non-negotiable.
+   - COACH FOR EMOTIONAL INTELLIGENCE & DEPTH: Guide early career professionals on how to manage their emotions in a productive and professional way. Do NOT write "it can feel overwhelming" — be specific about the emotion (:
+     e.g. "the knot in your chest before hitting send", "the low-grade dread of you next performance review", 
+     "the particular sting of being talked over in a meeting". Each named emotion must be followed with guidance on how to interpret the situation professionally and one that
+     redirects towards helpful action. This emotional coaching layer is essential.
    - TACTICAL depth: Give step-by-step instructions with actual timeframes and metrics
-   - Use VARIED paragraph lengths: alternate between 3-5 sentence punchy paragraphs and 5-11 sentence analytical ones
+   - Use VARIED paragraph lengths: provide depth and thoughtful paragraphs of at least 5-11 sentences
    - SECTION ENDING VARIETY: Do NOT close every H2 section with the same bold "**Action for This Week:**"
      label. That pattern turns into wallpaper and readers stop reading it. Vary the delivery:
        * Weave the CTA into the final paragraph as a natural sentence ("The move this week is to...")
@@ -166,13 +164,14 @@ HUMANNESS & QUALITY RULES
 - TACTICAL + EMOTIONAL: Balance concrete actions with emotional/relational insights
 - Each major section should feel like a mini-essay with a clear argument or framework
 
-CONTENT REQUIREMENTS FOR LONG-FORM:
+CONTENT REQUIREMENTS:
 - Include 1 concrete example with roles, scenarios and resolution with vivid details
 - Provide exact scripts or phrases for difficult conversations when relevant
 - Build frameworks or mental models readers can apply (give them names if helpful)
-- Address the emotional or social dynamics explicitly - the awkwardness, the fear, the office politics
+- Address the emotional or social dynamics explicitly - the awkwardness, the fear, the office politics 
 - Challenge at least one piece of conventional wisdom with a nuanced take
 - Give readers decision-making frameworks, not just "tips"
+- Avoid cliches and AI-sounding phrases at all costs
 
 OUTPUT FORMAT:
 - Output ONLY the blog post content in pure Markdown format

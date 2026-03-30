@@ -20,7 +20,7 @@ SCORING CRITERIA (0-10 scale for each):
 1. **Word Count & Depth** (0-10)
    - Total: At least 2,500 words = 10 points
    - Each major H2 section: at least 500 words = full credit
-   - Deduct points for thin sections or overall brevity
+   - Deduct points for thin sections, paragraphs with only 2-3 sentences, or overall brevity
    - Deduct points if content feels surface-level or lacks depth of analysis, nuance, or insight
 
 2. **Specific Examples & Details** (0-10)
@@ -47,9 +47,9 @@ SCORING CRITERIA (0-10 scale for each):
    - Deduct points for any "AI-sounding" phrases or generic filler ("let's dive in", "game-changer", "at the end of the day")
 
 4. **Emotional Depth** (0-10)
-   - 10 = At least 3 distinct named emotions across the post (e.g. "the dread of Sunday nights", "the electric relief when your manager finally sees your work"); validates the reader's experience in a way that feels coaching-level specific
-   - 8 = 1-2 named emotions with genuine resonance; reader feels seen but a few key moments are missed
-   - 5 = Emotional language is present but generic ("it can feel overwhelming", "you might feel nervous")
+   - 10 = The article clearly articulates specific emotions and provides helpful framing and actionable guidance (e.g. "the dread of negative feedback", "the electric relief when your manager finally sees your work"); validates the reader's experience in a way that feels specific and actionable
+   - 8 = Named emotions with genuine resonance, but lacks deeper emotional intelligence or actionable validation
+    - 5 = Some attempt at emotional resonance, but feelings are generic
    - 2 = A single passing mention of feelings with no real validation
    - 0 = Purely tactical, no emotional intelligence
 
@@ -63,7 +63,7 @@ SCORING CRITERIA (0-10 scale for each):
    - 5 = Competent but pedestrian, paragraphs of similar length and sentence count
    - 0 = Generic, repetitive, "AI-sounding" language
 
-OVERALL QUALITY THRESHOLD: Average score must be ≥ 8.5 to publish
+OVERALL QUALITY THRESHOLD: Average score must be ≥ 8.7 to publish
 
 ---
 
@@ -83,7 +83,7 @@ YOUR OUTPUT MUST BE VALID JSON with this exact structure:
     "writing_quality": <0-10>
   }},
   "average_score": <calculated average>,
-  "passes_threshold": <true if avg >= 9.0, false otherwise>,
+  "passes_threshold": <true if avg >= 8.7, false otherwise>,
   "feedback": {{
     "strengths": [
       "Specific strength 1 with line/section reference",
@@ -107,10 +107,10 @@ INSTRUCTIONS:
 3. Quote problematic phrases that sound AI-generated
 4. Be tough but constructive - this must be publication-worthy
 5. If recommending REVISE, prioritize 2-3 most critical issues
-6. MANDATORY: For every criterion scored below 8.5, you MUST include at least one entry in
+6. MANDATORY: For every criterion scored below 8.7, you MUST include at least one entry in
    critical_issues that states: the criterion name, the specific section where the problem occurs,
    the exact issue (quote the weak text if possible), and a concrete fix instruction.
-   An empty critical_issues array is only acceptable when ALL criteria score 8.5 or above.
+   An empty critical_issues array is only acceptable when ALL criteria score 8.7 or above.
 
 Return ONLY the JSON object, no other text.
 """
@@ -132,7 +132,7 @@ class EvaluationAgent(BaseAgent):
     """Agent that evaluates content quality and provides structured feedback."""
 
     llm: BaseChatModel
-    score_threshold: float = 8.5
+    score_threshold: float = 8.7
 
     def evaluate(self, content: str) -> EvaluationResult:
         """
