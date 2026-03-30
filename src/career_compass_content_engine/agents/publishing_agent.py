@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -21,6 +22,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from ..config import Settings
 from .base import AgentResult, BaseAgent
+
+logger = logging.getLogger(__name__)
 
 
 WEBFLOW_API_BASE = "https://api.webflow.com/v2"
@@ -156,7 +159,7 @@ class WebflowCMS:
         description: str,
         article_html: str,
         author_item_id: Optional[str],
-        main_image_url: str,
+        main_image_url: Optional[str] = None,
         thumb_image_url: Optional[str] = None,
         main_image_alt: str = "",
         thumb_image_alt: str = "",
@@ -179,16 +182,15 @@ class WebflowCMS:
                 field_slug_slug: slugify(title),
                 field_slug_description: description,
                 field_slug_article: article_html,
-                # Always include both `url` and `alt` keys so Webflow receives
-                # a consistent image object. Also include `alt_text` for
-                # compatibility with any templates expecting that key.
-                field_slug_main_image: {
-                    "url": main_image_url,
-                    "alt": main_image_alt,
-                    "alt_text": main_image_alt,
-                },
             },
         }
+
+        if main_image_url:
+            payload["fieldData"][field_slug_main_image] = {
+                "url": main_image_url,
+                "alt": main_image_alt,
+                "alt_text": main_image_alt,
+            }
 
         if thumb_image_url:
             payload["fieldData"][field_slug_thumb_image] = {
@@ -338,17 +340,16 @@ class PublishingAgent(BaseAgent):
                     return {"status": "error", "reason": f"Asset upload failed: {exc}"}
 
         if not hosted_image_url:
-            return {
-                "status": "skipped",
-                "reason": "No image URL or file path provided; skipping Webflow CMS creation.",
-            }
+            logger.warning(
+                "[PublishingAgent] No image available — publishing CMS item without featured image."
+            )
 
         # Derive title: prefer metadata, then suggested_title, then H1 from the markdown, else fallback
         title = metadata.get("title") or metadata.get("suggested_title") or None
         description = metadata.get("summary") or metadata.get("excerpt") or ""
         # If the metadata provided pre-rendered HTML, prefer it. Otherwise convert Markdown to HTML.
         if metadata.get("html"):
-            article_html = metadata.get("html")
+            article_html: str = str(metadata.get("html"))
         else:
             if md_to_html:
                 try:
@@ -430,8 +431,6 @@ class PublishingAgent(BaseAgent):
         short_summary = ""
         if raw_summary:
             # Try to keep it to the first two sentences for a concise meta description.
-            import re
-
             sentences = [s.strip() for s in re.split(r'(?<=[\.!?])\s+', raw_summary) if s.strip()]
             if not sentences:
                 short_summary = raw_summary

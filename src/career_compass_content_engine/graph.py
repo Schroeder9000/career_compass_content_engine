@@ -60,7 +60,7 @@ from .tools.readability_scorer import ReadabilityScorer
 logger = logging.getLogger(__name__)
 
 # ── Pipeline constants (single source of truth) ───────────────────────────────
-MAX_REVISIONS: int = 2        # Max evaluation cycles; 1 edit revision will occur
+MAX_REVISIONS: int = 3        # Max evaluation cycles before forcing publish
 SCORE_THRESHOLD: float = 8.5  # Average score (0–10) required to pass without revision
 
 
@@ -392,6 +392,11 @@ def build_graph(
             gen = ImageGenerator()
             gen.openai_api_key = settings.openai_api_key
             img_path = await _run_sync(lambda: gen.generate(prompt_text, size=size))
+            # Sanity-check: reject suspiciously small files (e.g. 1x1 pixel fallbacks)
+            if img_path.stat().st_size < 1024:
+                raise RuntimeError(
+                    f"Generated image is only {img_path.stat().st_size} bytes — treating as failed generation"
+                )
             image_file_path = str(img_path)
             logger.info("✅ [image_generate] done")
         except Exception as exc:

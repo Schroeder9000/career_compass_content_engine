@@ -60,51 +60,9 @@ class ImageGenerator:
                 logger.warning("[ImageGenerator] download attempt %d failed: %s", attempt, exc)
                 time.sleep(0.5 * attempt)
 
-        # All retries failed — attempt to generate a simple fallback image locally (requires Pillow).
-        logger.warning("[ImageGenerator] all download attempts failed for %s; creating programmatic fallback", url)
-        if _PIL_AVAILABLE:
-            try:
-                from PIL import Image, ImageDraw, ImageFont
-
-                W, H = 1200, 800
-                bg_color = (240, 240, 240)
-                text_color = (40, 40, 40)
-                img = Image.new("RGB", (W, H), color=bg_color)
-                draw = ImageDraw.Draw(img)
-                try:
-                    font = ImageFont.load_default()
-                except Exception:
-                    font = None
-                # Draw a simple centered message with truncated prompt
-                msg = "Image generation failed — placeholder"
-                prompt_snip = (url.split("?text=")[-1] if "?text=" in url else "")
-                lines = [msg]
-                if prompt_snip:
-                    import urllib.parse
-
-                    text = urllib.parse.unquote_plus(prompt_snip)[:200]
-                    lines.append(text)
-                y = 40
-                for line in lines:
-                    if font:
-                        draw.text((40, y), line, fill=text_color, font=font)
-                    else:
-                        draw.text((40, y), line, fill=text_color)
-                    y += 24
-                img.save(out_path, format="PNG")
-                logger.info("[ImageGenerator] wrote fallback PNG: %s (%d bytes)", out_path, out_path.stat().st_size)
-                return out_path
-            except Exception as exc:
-                logger.warning("[ImageGenerator] failed to create programmatic fallback image: %s", exc)
-
-        # If Pillow isn't available or generation failed, write a tiny 1x1 PNG fallback so flow can continue.
-        logger.warning("[ImageGenerator] writing 1x1 PNG fallback to %s", out_path)
-        png_1x1 = base64.b64decode(
-            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
-        )
-        with out_path.open("wb") as f:
-            f.write(png_1x1)
-        return out_path
+        # All retries failed — raise so the caller can handle the failure cleanly
+        # rather than silently uploading a broken placeholder to Webflow.
+        raise RuntimeError(f"Failed to download image from {url} after 3 attempts: {last_exc}")
 
     def _optimize_image(self, path: Path) -> Path:
         if not _PIL_AVAILABLE:
@@ -167,12 +125,7 @@ class ImageGenerator:
                     path = self._download_url(url, out_path)
                     return self._optimize_image(path)
             except Exception as exc:
-                logger.warning("[ImageGenerator] OpenAI image generation failed; falling back to placeholder. Error: %r", exc)
-                # Fall through to placeholder logic below
-                pass
+                logger.warning("[ImageGenerator] OpenAI image generation failed: %r", exc)
+                raise RuntimeError(f"Image generation failed: {exc}") from exc
 
-        # Fallback: download placeholder image
-        placeholder = f"https://via.placeholder.com/1200x800.png?text={requests.utils.requote_uri(prompt[:40])}"
-        logger.info("[ImageGenerator] using placeholder image: %s", placeholder)
-        path = self._download_url(placeholder, out_path)
-        return self._optimize_image(path)
+        raise RuntimeError("Image generation failed: no API key configured and no fallback available.")
