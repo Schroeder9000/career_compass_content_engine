@@ -385,7 +385,7 @@ def build_graph(
         logger.info("🔵 [image_generate] starting...")
         image_plan = state.get("image_plan", {})
         prompt_text = _augment_image_prompt(image_plan)
-        size = "1792x1024"
+        size = _aspect_ratio_to_size(image_plan)
         logger.info("📐 [image_generate] size: %s", size)
         image_file_path: Optional[str] = None
         try:
