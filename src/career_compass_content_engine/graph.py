@@ -119,13 +119,13 @@ def _augment_image_prompt(image_plan: Dict[str, Any]) -> str:
 
 
 def _aspect_ratio_to_size(image_plan: Dict[str, Any]) -> str:
-    """Map an aspect_ratio string to a DALL-E 3 supported size string."""
+    """Map an aspect_ratio string to a gpt-image-1 supported size string."""
     if image_plan.get("size"):
         return image_plan["size"]
-    ar = str(image_plan.get("aspect_ratio", "")).strip()
+    ar = str(image_plan.get("aspect_ratio", "16:9")).strip()
     return {
-        "16:9": "1792x1024", "16x9": "1792x1024",
-        "4:3": "1792x1024",  "4x3": "1792x1024",
+        "16:9": "1536x1024", "16x9": "1536x1024",
+        "4:3": "1536x1024",  "4x3": "1536x1024",
         "1:1": "1024x1024",  "1x1": "1024x1024",
     }.get(ar, "1024x1024")
 

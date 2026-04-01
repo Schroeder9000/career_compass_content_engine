@@ -28,39 +28,38 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
     - image: Visual concept design (creative but structured)
     - metadata: Structured data generation (precision and consistency)
     """
-    # Use the most advanced models for highest quality output
-    # o1 for research (deep reasoning), GPT-4 for content generation
+    # GPT-5.4 across all task types for maximum output quality
     model_config = {
         "research": {
-            "model": "o1",  # Highest reasoning for strategic analysis
-            "temperature": 1,  # o1 models use temperature=1
+            "model": "gpt-5.4",  # Highest capability for strategic analysis
+            "temperature": 0.2,  # Low temperature for focused, analytical output
         },
         "writing": {
-            "model": "gpt-4o",  # Best for long-form creative content
+            "model": "gpt-5.4",  # Best for long-form creative content
             "temperature": 0.7,  # Higher creativity for engaging content
         },
         "editing": {
-            "model": "gpt-4o",  # Best quality for refinement
+            "model": "gpt-5.4",  # Best quality for refinement
             "temperature": 0.5,  # Balanced for consistency with creativity
         },
         "image": {
-            "model": "gpt-4o",  # Best for creative visual concepts
+            "model": "gpt-5.4",  # Best for creative visual concepts
             "temperature": 0.8,  # High creativity for unique visuals
         },
         "metadata": {
-            "model": "gpt-4o",  # Best for structured output
+            "model": "gpt-5.4",  # Best for structured output
             "temperature": 0.3,  # Lower for consistent formatting
         },
         "evaluation": {
-            "model": "gpt-4o",  # Deterministic scoring requires consistency
+            "model": "gpt-5.4",  # Highest capability for consistent scoring
             "temperature": 0,   # Zero temperature for reproducible evaluation scores
         },
         "revision": {
-            "model": "gpt-4o",  # Same quality model for revision editing
+            "model": "gpt-5.4",  # Best quality model for revision editing
             "temperature": 0.8,  # Higher than first edit — force genuinely different rewrites
         },
         "default": {
-            "model": "gpt-4o",  # Default to best general model
+            "model": "gpt-5.4",  # Default to best general model
             "temperature": 0.7,
         },
     }
