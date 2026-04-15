@@ -504,7 +504,9 @@ def build_graph(
         research_payload = state.get("research_payload", {})
         try:
             webflow_item_id = (
-                result.get("item", {}).get("id")
+                result.get("webflow_item_id")
+                or result.get("webflow_item", {}).get("id")
+                or result.get("item", {}).get("id")
                 or result.get("id")
             )
             topic_store.append(

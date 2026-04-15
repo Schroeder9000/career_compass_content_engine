@@ -2,10 +2,8 @@ from __future__ import annotations
 
 
 import hashlib
-import json
 import logging
 import mimetypes
-import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -94,14 +92,22 @@ class WebflowCMS:
         except Exception as exc:
             raise RuntimeError(f"Failed to create asset metadata for {file_name}: {exc}")
 
-    def upload_asset(self, site_id: str, file_path: Path) -> Optional[str]:
+    @staticmethod
+    def _asset_hosted_url(metadata: Dict[str, Any]) -> Optional[str]:
+        """Return the full CDN/S3 URL that Webflow can resolve for CMS image fields."""
+        return metadata.get("hostedUrl") or metadata.get("assetUrl") or None
+
+    def upload_asset(self, site_id: str, file_path: Path) -> Optional[Dict[str, str]]:
         metadata = self.create_asset_metadata(site_id, file_path)
         upload_url = metadata.get("uploadUrl")
         upload_details = metadata.get("uploadDetails", {}) or {}
-        hosted_url = metadata.get("hostedUrl")
+        hosted_url = self._asset_hosted_url(metadata)
 
         if not upload_url:
-            return hosted_url
+            # Asset with same hash already exists; use its hosted URL.
+            if hosted_url:
+                return {"url": hosted_url}
+            return None
 
         # uploadDetails may be either a dict of form fields or contain a 'fields' key.
         if isinstance(upload_details, dict) and "fields" in upload_details:
@@ -120,7 +126,29 @@ class WebflowCMS:
         except requests.RequestException as exc:
             raise RuntimeError(f"Failed to upload asset {file_path.name} to {upload_url}: {exc}")
 
-        return hosted_url or metadata.get("fileUrl")
+        if hosted_url:
+            return {"url": hosted_url}
+        return None
+
+    @staticmethod
+    def _build_image_field_value(image: Any, alt_text: str) -> Optional[Dict[str, str]]:
+        """Build a CMS image field value from an upload_asset() result or URL string.
+
+        Webflow CMS image fields work when given {"url": <full_hosted_url>, "alt": ...}.
+        Webflow internally creates its own fileId and CDN copy from the URL.
+        """
+        if not image:
+            return None
+
+        url: Optional[str] = None
+        if isinstance(image, dict):
+            url = image.get("url") or image.get("hostedUrl")
+        elif isinstance(image, str):
+            url = image
+
+        if url:
+            return {"url": str(url), "alt": alt_text or ""}
+        return None
 
     def get_collection_fields(self, collection_id: str):
         url = f"{WEBFLOW_API_BASE}/collections/{collection_id}"
@@ -159,8 +187,8 @@ class WebflowCMS:
         description: str,
         article_html: str,
         author_item_id: Optional[str],
-        main_image_url: Optional[str] = None,
-        thumb_image_url: Optional[str] = None,
+        main_image_url: Optional[Any] = None,
+        thumb_image_url: Optional[Any] = None,
         main_image_alt: str = "",
         thumb_image_alt: str = "",
         field_slug_title: str = "name",
@@ -185,19 +213,13 @@ class WebflowCMS:
             },
         }
 
-        if main_image_url:
-            payload["fieldData"][field_slug_main_image] = {
-                "url": main_image_url,
-                "alt": main_image_alt,
-                "alt_text": main_image_alt,
-            }
+        main_image_value = self._build_image_field_value(main_image_url, main_image_alt)
+        if main_image_value:
+            payload["fieldData"][field_slug_main_image] = main_image_value
 
-        if thumb_image_url:
-            payload["fieldData"][field_slug_thumb_image] = {
-                "url": thumb_image_url,
-                "alt": thumb_image_alt,
-                "alt_text": thumb_image_alt,
-            }
+        thumb_image_value = self._build_image_field_value(thumb_image_url, thumb_image_alt)
+        if thumb_image_value:
+            payload["fieldData"][field_slug_thumb_image] = thumb_image_value
 
         if author_item_id:
             payload["fieldData"][field_slug_author] = author_item_id
@@ -213,6 +235,49 @@ class WebflowCMS:
             return resp.json()
         except Exception as exc:
             raise RuntimeError(f"Failed to create CMS item in collection {collection_id}: {exc}")
+
+    def publish_items(self, collection_id: str, item_ids: list[str]) -> Dict[str, Any]:
+        if not item_ids:
+            raise ValueError("item_ids must contain at least one item id")
+        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}/items/publish"
+        payload = {"itemIds": item_ids}
+        try:
+            resp = self._request_with_retries("POST", url, json=payload)
+            if resp.status_code not in (200, 201, 202):
+                raise RuntimeError(f"Publish items failed: {resp.status_code} {resp.text}")
+            body = resp.json()
+            published_ids = set(body.get("publishedItemIds") or [])
+            errors = body.get("errors") or []
+            missing = [item_id for item_id in item_ids if item_id not in published_ids]
+            if errors or missing:
+                raise RuntimeError(
+                    f"Publish API returned errors={errors} missing_published_ids={missing}"
+                )
+            return body
+        except Exception as exc:
+            raise RuntimeError(f"Failed to publish CMS item(s) in collection {collection_id}: {exc}")
+
+    def publish_site(self, site_id: str) -> Dict[str, Any]:
+        """Trigger a full site publish so new CMS items appear on the live CDN."""
+        import time
+
+        site_resp = self.session.get(f"{WEBFLOW_API_BASE}/sites/{site_id}", timeout=30)
+        site_resp.raise_for_status()
+        domain_ids = [d["id"] for d in (site_resp.json().get("customDomains") or []) if d.get("id")]
+        if not domain_ids:
+            raise RuntimeError(f"No custom domains found for site {site_id}; cannot publish site.")
+
+        url = f"{WEBFLOW_API_BASE}/sites/{site_id}/publish"
+        # The v2 publish endpoint expects domain IDs as plain strings.
+        for attempt in range(1, 4):
+            resp = self.session.post(url, json={"customDomains": domain_ids}, timeout=60)
+            if resp.status_code == 429:
+                time.sleep(30 * attempt)
+                continue
+            if resp.status_code not in (200, 201, 202):
+                raise RuntimeError(f"Site publish failed: {resp.status_code} {resp.text}")
+            return resp.json()
+        raise RuntimeError("Site publish failed after retries (rate limited)")
 
 
 
@@ -318,10 +383,10 @@ class PublishingAgent(BaseAgent):
         self,
         metadata: Dict[str, str],
         blog_markdown: str,
-        image_url: Optional[str] = None,
+        image_url: Optional[Any] = None,
         image_file_path: Optional[str] = None,
-        thumb_image_url: Optional[str] = None,
-    ) -> Dict[str, str]:
+        thumb_image_url: Optional[Any] = None,
+    ) -> Dict[str, Any]:
         if not self.settings.webflow_api_token or not self.settings.webflow_collection_id or not self.settings.webflow_site_id:
             return {
                 "status": "skipped",
@@ -389,6 +454,8 @@ class PublishingAgent(BaseAgent):
                     return f.get("slug")
             return None
 
+        reserved_plaintext_slugs = {"blog-post-featured-title-featured-card"}
+
         # determine slugs with sensible defaults
         field_slug_title = "name"
         field_slug_slug = "slug"
@@ -402,18 +469,29 @@ class PublishingAgent(BaseAgent):
         if any(f.get("slug") == "name" for f in col_fields):
             field_slug_title = "name"
         else:
-            field_slug_title = first_plaintext_slug() or field_slug_title
+            field_slug_title = first_plaintext_slug(exclude=tuple(reserved_plaintext_slugs)) or field_slug_title
 
         if any(f.get("slug") == "slug" for f in col_fields):
             field_slug_slug = "slug"
         else:
-            field_slug_slug = first_plaintext_slug(exclude=(field_slug_title,)) or field_slug_slug
+            field_slug_slug = first_plaintext_slug(exclude=(field_slug_title, *reserved_plaintext_slugs)) or field_slug_slug
 
         field_slug_article = first_slug_by_type("RichText") or field_slug_article
         image_slugs = [f.get("slug") for f in col_fields if f.get("type") == "Image"]
-        field_slug_main_image = image_slugs[0] if image_slugs else field_slug_main_image
-        field_slug_thumb_image = image_slugs[1] if len(image_slugs) > 1 else (image_slugs[0] if image_slugs else field_slug_thumb_image)
-        field_slug_description = first_plaintext_slug(exclude=(field_slug_title, field_slug_slug)) or field_slug_description
+        if any(s == "blog-post-featured-image-photo" for s in image_slugs):
+            field_slug_main_image = "blog-post-featured-image-photo"
+        else:
+            field_slug_main_image = image_slugs[0] if image_slugs else field_slug_main_image
+
+        if any(s == "blog-post-thumbnail-image-photo" for s in image_slugs):
+            field_slug_thumb_image = "blog-post-thumbnail-image-photo"
+        else:
+            field_slug_thumb_image = image_slugs[1] if len(image_slugs) > 1 else (
+                image_slugs[0] if image_slugs else field_slug_thumb_image
+            )
+        field_slug_description = first_plaintext_slug(
+            exclude=(field_slug_title, field_slug_slug, *reserved_plaintext_slugs)
+        ) or field_slug_description
         # find reference field for author if present
         for f in col_fields:
             if f.get("type") == "Reference":
@@ -443,6 +521,22 @@ class PublishingAgent(BaseAgent):
         category_field_slug = None
         category_field_type = None
         summary_field_slug = None
+        field_by_slug: Dict[str, Dict[str, Any]] = {
+            (f.get("slug") or ""): f for f in col_fields if f.get("slug")
+        }
+
+        def _max_len_for_slug(slug: Optional[str]) -> Optional[int]:
+            if not slug:
+                return None
+            info = field_by_slug.get(slug, {})
+            validations = info.get("validations") or {}
+            raw = validations.get("maxLength")
+            if isinstance(raw, int):
+                return raw
+            if isinstance(raw, str) and raw.isdigit():
+                return int(raw)
+            return None
+
         for f in col_fields:
             slug = (f.get("slug") or "")
             name = (f.get("name") or "")
@@ -451,7 +545,11 @@ class PublishingAgent(BaseAgent):
             if not category_field_slug and ("category" in lslug or "category" in lname or "categories" in lslug):
                 category_field_slug = slug
                 category_field_type = f.get("type")
-            if not summary_field_slug and any(k in lslug for k in ("summary", "meta", "description", "excerpt")):
+            if (
+                not summary_field_slug
+                and any(k in lslug for k in ("summary", "meta", "description", "excerpt"))
+                and lslug != "blog-post-featured-title-featured-card"
+            ):
                 summary_field_slug = slug
 
         if not summary_field_slug:
@@ -523,9 +621,17 @@ class PublishingAgent(BaseAgent):
             if len(rewritten) > 200:
                 rewritten = rewritten[:197].rstrip() + "..."
 
+            summary_max_len = _max_len_for_slug(summary_field_slug)
+            if summary_max_len and len(rewritten) > summary_max_len:
+                rewritten = rewritten[:summary_max_len].rstrip()
+
             extra_fields[summary_field_slug] = rewritten
             # Also ensure a dedicated `summary` field receives the short summary
-            extra_fields["summary"] = rewritten
+            summary_field_max = _max_len_for_slug("summary")
+            if summary_field_max and len(rewritten) > summary_field_max:
+                extra_fields["summary"] = rewritten[:summary_field_max].rstrip()
+            else:
+                extra_fields["summary"] = rewritten
 
         # Add required Webflow taxonomy/reference fields for our collection
         # These are set to fixed IDs for category and author as requested.
@@ -559,5 +665,46 @@ class PublishingAgent(BaseAgent):
         except Exception as exc:  # pragma: no cover - network call
             return {"status": "error", "reason": f"Webflow CMS create failed: {exc}"}
 
-        return {"status": "success", "webflow_item": response}
+        created_item_id = response.get("id")
+        if not created_item_id:
+            return {
+                "status": "error",
+                "reason": "Webflow create succeeded but no item id was returned.",
+                "webflow_item": response,
+            }
+
+        try:
+            publish_response = cms.publish_items(self.settings.webflow_collection_id, [created_item_id])
+        except Exception as exc:  # pragma: no cover - network call
+            return {
+                "status": "error",
+                "reason": f"Webflow publish failed after create: {exc}",
+                "webflow_item": response,
+                "webflow_item_id": created_item_id,
+            }
+
+        # Refresh the item so callers receive authoritative publish flags/timestamps.
+        try:
+            item_url = f"{WEBFLOW_API_BASE}/collections/{self.settings.webflow_collection_id}/items/{created_item_id}"
+            refreshed = cms._request_with_retries("GET", item_url)
+            refreshed.raise_for_status()
+            webflow_item = refreshed.json()
+        except Exception:
+            webflow_item = response
+
+        # Trigger a full site publish so the new post appears on the live CDN.
+        site_publish_response: Dict[str, Any] = {}
+        try:
+            site_publish_response = cms.publish_site(self.settings.webflow_site_id)
+            logger.info("[PublishingAgent] Site publish triggered successfully.")
+        except Exception as exc:
+            logger.warning("[PublishingAgent] Site publish failed (CMS item is still live): %s", exc)
+
+        return {
+            "status": "success",
+            "webflow_item": webflow_item,
+            "webflow_publish": publish_response,
+            "webflow_site_publish": site_publish_response,
+            "webflow_item_id": created_item_id,
+        }
 

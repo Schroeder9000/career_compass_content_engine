@@ -39,6 +39,36 @@ class ImageGenerator:
         # optional API key can be provided to prefer OpenAI images
         self.openai_api_key: Optional[str] = None
 
+    @staticmethod
+    def _resolve_image_model() -> str:
+        # Keep env override for quick experimentation without code changes.
+        return (os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1.5").strip()
+
+    @staticmethod
+    def _normalize_size_for_model(size: str, model: str) -> str:
+        requested = (size or "").strip() or "1024x1024"
+        model_key = model.lower()
+        if model_key == "dall-e-3":
+            if requested in {"1024x1024", "1024x1792", "1792x1024"}:
+                return requested
+            # DALL-E 3 supports only these dimensions.
+            if requested in {"1536x1024", "16:9", "16x9", "4:3", "4x3"}:
+                return "1792x1024"
+            return "1024x1024"
+        return requested
+
+    @staticmethod
+    def _normalize_prompt_for_model(prompt: str, model: str) -> str:
+        normalized = (prompt or "").strip()
+        if model.lower() == "dall-e-3" and len(normalized) > 3900:
+            logger.warning(
+                "[ImageGenerator] prompt too long for %s (%d chars); truncating",
+                model,
+                len(normalized),
+            )
+            return normalized[:3900]
+        return normalized
+
     def _download_url(self, url: str, out_path: Path) -> Path:
         import time
 
@@ -93,21 +123,52 @@ class ImageGenerator:
         api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key:
             try:
-                logger.info("[ImageGenerator] requesting OpenAI Images API (b64) — size: %s", size)
+                model = self._resolve_image_model()
+                normalized_size = self._normalize_size_for_model(size, model)
+                normalized_prompt = self._normalize_prompt_for_model(prompt, model)
+                logger.info(
+                    "[ImageGenerator] requesting OpenAI Images API (b64) — model: %s size: %s",
+                    model,
+                    normalized_size,
+                )
                 headers = {
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 }
-                payload = {
-                    "model": "gpt-image-1",
-                    "prompt": prompt,
+                base_payload = {
+                    "model": model,
+                    "prompt": normalized_prompt,
                     "n": 1,
-                    "size": size,
-                    "quality": "high",
+                    "size": normalized_size,
                 }
-                resp = requests.post("https://api.openai.com/v1/images/generations", json=payload, headers=headers, timeout=60)
-                if resp.status_code != 200:
-                    logger.warning("[ImageGenerator] OpenAI image API returned %d: %s", resp.status_code, resp.text)
+                # Some models differ in accepted optional params. Try a small
+                # sequence for compatibility before failing.
+                payload_variants = []
+                if model.lower() == "dall-e-3":
+                    payload_variants.append({**base_payload, "response_format": "b64_json"})
+                    payload_variants.append(base_payload)
+                else:
+                    payload_variants.append({**base_payload, "quality": "high"})
+                    payload_variants.append(base_payload)
+
+                resp = None
+                for idx, payload in enumerate(payload_variants, 1):
+                    resp = requests.post(
+                        "https://api.openai.com/v1/images/generations",
+                        json=payload,
+                        headers=headers,
+                        timeout=60,
+                    )
+                    if resp.status_code == 200:
+                        break
+                    logger.warning(
+                        "[ImageGenerator] OpenAI image API variant %d returned %d: %s",
+                        idx,
+                        resp.status_code,
+                        resp.text,
+                    )
+
+                if resp is None or resp.status_code != 200:
                     raise RuntimeError("OpenAI image API failed")
                 j = resp.json()
                 data = j.get("data") or []

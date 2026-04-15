@@ -6,6 +6,7 @@
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 .pytest_cache/
 # Google service account key — contains private key, never commit
 *.service_account.json

@@ -34,6 +34,8 @@ class Settings:
     # LangSmith tracing (optional — set LANGCHAIN_API_KEY to enable)
     langsmith_api_key: Optional[str] = None
     langsmith_project: str = "career-compass-content-engine"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_tracing: bool = False
     # Logging level (DEBUG | INFO | WARNING | ERROR)
     log_level: str = "INFO"
     # LangGraph checkpointing — SQLite DB path (set to empty string to disable)
@@ -54,8 +56,14 @@ class Settings:
             gsc_site_url=os.environ.get("GSC_SITE_URL"),
             ga4_property_id=os.environ.get("GA4_PROPERTY_ID"),
             serper_api_key=os.environ.get("SERPER_API_KEY"),
-            langsmith_api_key=os.environ.get("LANGCHAIN_API_KEY"),
-            langsmith_project=os.environ.get("LANGCHAIN_PROJECT", "career-compass-content-engine"),
+            langsmith_api_key=os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY"),
+            langsmith_project=(
+                os.environ.get("LANGSMITH_PROJECT")
+                or os.environ.get("LANGCHAIN_PROJECT")
+                or "career-compass-content-engine"
+            ),
+            langsmith_endpoint=os.environ.get("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com"),
+            langsmith_tracing=(os.environ.get("LANGSMITH_TRACING") or "").strip().lower() in {"1", "true", "yes", "on"},
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
             checkpointer_path=os.environ.get("CHECKPOINTER_PATH", ".cache/checkpoints.db"),
         )
@@ -74,6 +82,12 @@ class Settings:
         """
         if not self.langsmith_api_key:
             return
+        if not self.langsmith_tracing:
+            return
+        os.environ["LANGSMITH_TRACING"] = "true"
+        os.environ["LANGSMITH_ENDPOINT"] = self.langsmith_endpoint
+        os.environ["LANGSMITH_API_KEY"] = self.langsmith_api_key
+        os.environ["LANGSMITH_PROJECT"] = self.langsmith_project
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_API_KEY"] = self.langsmith_api_key
         os.environ["LANGCHAIN_PROJECT"] = self.langsmith_project
