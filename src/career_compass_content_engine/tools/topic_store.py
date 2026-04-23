@@ -111,10 +111,20 @@ class TopicStore:
         if not records:
             return "(No prior run history.)"
 
-        recent = records[-limit:]  # oldest → newest slice
-        lines = [f"=== Content History — {len(recent)} recent post(s) ===", ""]
+        # De-duplicate by suggested_title (keep the most recent record for each title).
+        seen_titles: set = set()
+        deduped: List[Dict[str, Any]] = []
+        for r in reversed(records):  # newest first so we keep the latest occurrence
+            title = r.get("suggested_title") or r.get("topic") or ""
+            if title and title not in seen_titles:
+                seen_titles.add(title)
+                deduped.append(r)
 
-        for r in reversed(recent):  # newest first for readability
+        recent = deduped[:limit]  # cap to limit unique titles
+
+        lines = [f"=== Content History — {len(recent)} unique post(s) covered ===", ""]
+
+        for r in recent:  # already newest-first
             status = "✅" if r.get("evaluation_passed") else "⚠"
             score_str = f"{r.get('final_score', '?')}/10"
             rev_str = f"rev={r.get('revision_count', '?')}"
@@ -130,8 +140,17 @@ class TopicStore:
             for r in struggling[-5:]:
                 lines.append(f"  '{r.get('suggested_title', r.get('topic', 'Unknown'))}'")
 
+        # Build an explicit banned list for the LLM to check against.
+        banned_titles = sorted(seen_titles)
         lines += [
             "",
-            "DO NOT recommend any of the above topics again. Choose something clearly distinct.",
+            "⛔ BANNED TOPICS — you MUST NOT recommend any of these. This is a hard constraint:",
+        ]
+        for t in banned_titles:
+            lines.append(f"  - {t}")
+        lines += [
+            "",
+            "Your recommendation MUST be a topic not present in the banned list above.",
+            "If the topic you are considering appears anywhere in the banned list, choose a different one.",
         ]
         return "\n".join(lines)

@@ -31,6 +31,8 @@ class Settings:
     ga4_property_id: Optional[str] = None
     # Serper.dev API key for real-time SERP data
     serper_api_key: Optional[str] = None
+    # OpenAI image generation model (gpt-image-2, gpt-image-1, dall-e-3, dall-e-2)
+    openai_image_model: str = "gpt-image-2"
     # LangSmith tracing (optional — set LANGCHAIN_API_KEY to enable)
     langsmith_api_key: Optional[str] = None
     langsmith_project: str = "career-compass-content-engine"
@@ -56,6 +58,7 @@ class Settings:
             gsc_site_url=os.environ.get("GSC_SITE_URL"),
             ga4_property_id=os.environ.get("GA4_PROPERTY_ID"),
             serper_api_key=os.environ.get("SERPER_API_KEY"),
+            openai_image_model=(os.environ.get("OPENAI_IMAGE_MODEL") or "gpt-image-2").strip(),
             langsmith_api_key=os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY"),
             langsmith_project=(
                 os.environ.get("LANGSMITH_PROJECT")

@@ -86,6 +86,8 @@ DO NOT repeat the same angles as competitors. Choose a more specific, contrarian
     - Recommend 1–2 schema types to add (Article + FAQPage or HowTo where appropriate).
 
 4) Create an outline designed for:
+    - Thought leadership essay structure: 3–4 H2 sections maximum, each advancing a central argument
+    - NO FAQ section, NO playbook/checklist section, NO "Common Mistakes" list in the outline
     - Skimmability (clear H2/H3)
     - Fast extraction for AI answers (short sections, crisp bullets, explicit definitions)
     - Internal linking to existing posts (name which posts to link to by slug/title if possible)
@@ -110,7 +112,7 @@ Return a single JSON object with keys:
 - rationale (3–6 bullets, include why it’s winnable + AEO-friendly)
 - target_keywords (5–10 strings; include long-tail variants)
 - target_questions (8–15 strings; phrased as real queries)
-- outline (array of section objects: {{heading, goal, bullets}})
+- outline (array of section objects: {{heading, goal, bullets}} — EXACTLY 3–4 items, no more)
 - internal_links (array of objects: {{target_post, anchor_text, reason}})
 - suggested_schema (array of strings, e.g. ["FAQPage","HowTo"]) 
 - cannibalization_risks (array of strings; empty if none)

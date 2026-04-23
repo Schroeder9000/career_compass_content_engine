@@ -37,10 +37,12 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         "writing": {
             "model": "gpt-5.4",  # Best for long-form creative content
             "temperature": 0.7,  # Higher creativity for engaging content
+            "max_tokens": 2200,  # Hard ceiling: ~1,200 words of Markdown (target range)
         },
         "editing": {
             "model": "gpt-5.4",  # Best quality for refinement
             "temperature": 0.5,  # Balanced for consistency with creativity
+            "max_tokens": 2200,  # Match writing agent ceiling — editor polishes, doesn't expand
         },
         "image": {
             "model": "gpt-5.4",  # Best for creative visual concepts
@@ -57,6 +59,7 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         "revision": {
             "model": "gpt-5.4",  # Best quality model for revision editing
             "temperature": 0.8,  # Higher than first edit — force genuinely different rewrites
+            "max_tokens": 2200,  # Same ceiling as writing/editing
         },
         "default": {
             "model": "gpt-5.4",  # Default to best general model
@@ -69,6 +72,7 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         model=config["model"],
         api_key=settings.openai_api_key,
         temperature=config["temperature"],
+        max_tokens=config.get("max_tokens"),
     )
 
 

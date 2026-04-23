@@ -42,7 +42,7 @@ class ImageGenerator:
     @staticmethod
     def _resolve_image_model() -> str:
         # Keep env override for quick experimentation without code changes.
-        return (os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1.5").strip()
+        return (os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-2").strip()
 
     @staticmethod
     def _normalize_size_for_model(size: str, model: str) -> str:
@@ -157,7 +157,7 @@ class ImageGenerator:
                         "https://api.openai.com/v1/images/generations",
                         json=payload,
                         headers=headers,
-                        timeout=60,
+                        timeout=180,  # gpt-image-1 regularly takes 60-90s; 180s gives safe headroom
                     )
                     if resp.status_code == 200:
                         break

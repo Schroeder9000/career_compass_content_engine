@@ -64,7 +64,7 @@ Before you write, decide on a clear POV:
 - What should they do instead (your framework)?
 - What is a slightly contrarian but true take you can defend?
 
-Write a complete blog post in Markdown (1,800–3,000 words minimum) with the structure below.
+Write a complete blog post in Markdown (800–1,200 words) with the structure below.
 
 CRITICAL: DO NOT label structural elements like "Hook" or "CTA" as visible headings. These are instructions for you, not section titles.
 
@@ -89,62 +89,43 @@ REQUIRED STRUCTURE
    - A first-person moment: "The worst feedback I ever got came wrapped in the nicest possible words."
    - A contrarian claim followed by a defense: "Hustle culture didn't ruin your generation's work ethic. Bad onboarding did."
 
-3) TL;DR section (use heading "## TL;DR"): 5-8 specific, non-obvious bullets that preview your key insights
+3) TL;DR section (use heading "## TL;DR"): 3-5 sharp, non-obvious bullets that preview your key insights — no generic career advice
 
-4) Main content sections (H2/H3): Follow the outline provided, but adapt headings for natural flow
-   - CRITICAL DEPTH REQUIREMENT: Each major H2 section MUST be at least 500 words minimum (5-8 paragraphs)
-   - Each H3 subsection should be at least 250 words (3-4 paragraphs)
-   - EXAMPLES (use sparingly — quality over quantity): Include 1-2 fully developed examples across the
-     entire article, placed where they provide the most illustrative value. Do NOT add an example to
-     every section — that becomes formulaic and repetitive. A single great example beats five mediocre
-     ones. Each example you do use MUST have:
-     a) A named person (invent a realistic first name)
-     b) Their specific job title and company type (e.g. "Priya, a product manager at a mid-size fintech")
-     c) The exact situation they faced
-     d) What they said or did (use actual dialogue in quotes where relevant)
-     e) The concrete outcome
-   - COACHING SCRIPTS: Provide exact word-for-word scripts for any conversation or action described.
-     Never write "you might say something like" — write the actual sentence the reader should say.
-   - OPTIONAL: Build a framework or mental model with a memorable name, as appropriate for the topic
+4) Main content sections (H2/H3): Follow the outline provided, adapting headings for natural flow
+   - HARD LIMIT: AT MOST 3–4 H2 sections total (not counting TL;DR). If the outline has more items, consolidate them. Sections 6 and 7 (Career Compass mention + Closing) are REQUIRED and must fit within the word count — plan for them from the start.
+   - Each H2 section should be 2-4 paragraphs of genuine analysis — not a checklist or a series of tips.
+   - EXAMPLE: Include at most ONE brief, specific example across the entire article — woven naturally
+     into the argument where it lands hardest. It does not need a named character or dialogue if the
+     insight is vivid enough on its own. A concrete scenario told in 2-3 sentences beats a full
+     vignette that interrupts the essay's momentum.
+   - NO TEMPLATES, NO PLAYBOOKS, NO SCRIPTS: Do not end sections with "Try this:", "Use this formula:",
+     or step-by-step action plans. Coaching happens through perspective and argument, not frameworks to fill in.
    - CONTRARIAN requirement: Challenge at least one piece of conventional wisdom per article
-   - COACH FOR EMOTIONAL INTELLIGENCE & DEPTH: Guide early career professionals on how to manage their emotions in a productive and professional way. Do NOT write "it can feel overwhelming" — be specific about the emotion (:
-     e.g. "the knot in your chest before hitting send", "the low-grade dread of you next performance review", 
-     "the particular sting of being talked over in a meeting". Each named emotion must be followed with guidance on how to interpret the situation professionally and one that
-     redirects towards helpful action. This emotional coaching layer is essential.
-   - TACTICAL depth: Give step-by-step instructions with actual timeframes and metrics
-   - Use VARIED paragraph lengths: provide depth and thoughtful paragraphs of at least 5-11 sentences
-   - SECTION ENDING VARIETY: Do NOT close every H2 section with the same bold "**Action for This Week:**"
-     label. That pattern turns into wallpaper and readers stop reading it. Vary the delivery:
-       * Weave the CTA into the final paragraph as a natural sentence ("The move this week is to...")
-       * Use a direct imperative that flows from the section argument
-       * Occasionally a bold callout — but vary the label and keep it rare (max 2-3 per article)
-     Every section should leave the reader knowing what to do, but through different structural forms.
-   - PARAGRAPH DEPTH RULE (applies especially to sections after the first two H2s): Later sections
-     must NOT fall into a repetitive 3-sentence-per-paragraph rhythm. As you move deeper into the
-     article, paragraphs should get richer, not thinner. At least one paragraph per H2 section in
-     the second half of the article must be 6+ sentences, going into real analytical depth or
-     storytelling detail. If a paragraph is making an important point, stay with it — explain the
-     mechanism, give the counter-argument, show the nuance, then land the conclusion.
+   - EMOTIONAL COACHING: Be specific about the emotional experience — name the exact feeling
+     (e.g. "the low-grade dread before your next review", "the particular sting of being talked over")
+     and follow it with a reframe that redirects toward action. Keep it brief and woven into the prose.
+   - PARAGRAPH DEPTH RULE: Keep paragraphs focused and tight — 2-4 sentences is ideal. Stay concise and move forward.
    - SHOW YOUR REASONING: Explain WHY advice works, not just WHAT to do
 
-5) Additional value-add sections (if relevant to topic - NO GENERIC HEADINGS):
-   - Common mistakes section with specific scenarios
-   - A multi-day or multi-week action plan
-   - Scripts for difficult conversations
-   - Decision frameworks or self-assessment tools
-   - Emotional management strategies
+5) NO FAQ section. NO step-by-step playbook. NO "Common Mistakes" list. NO template-style checklists.
+   The article should feel like a smart, opinionated coach talking — not a how-to guide.
+   Any tactical takeaway should be woven into the argument, not extracted into a separate section.
 
-6) Career Compass mention (NO HEADING - integrate naturally): 
-   - In your final section or conclusion, naturally mention how Career Compass helps:
-   - Build a personalized growth plan
-   - Track weekly wins and career metrics  
-   - Get weekly coaching nudges via email
+6) ⚠️ MANDATORY — Career Compass mention (NO HEADING - integrate naturally into final section):
+   - You MUST mention Career Compass before the closing. Do not skip this.
+   - Naturally mention how Career Compass helps:
+     * Build a personalized growth plan
+     * Track weekly wins and career metrics
+     * Get weekly coaching nudges via email
 
-
-7) Closing (NO HEADING): 2-4 paragraphs that:
+7) ⚠️ MANDATORY — Closing (NO HEADING): 2-4 paragraphs that:
    - Synthesize your key insight without repeating the TL;DR
    - Provide encouragement that feels personal, not generic
    - Leave readers with a concrete next step or mindset shift
+
+⚠️ FINAL CHECK — Before you stop writing, confirm both of these are in the article:
+   [ ] Career Compass is mentioned naturally near the end
+   [ ] There is a proper closing section (not a template or script)
 
 CONTENT FORMAT BIAS:
 - This is a thought-leadership blog, not a listicle. Pure list-style articles ("5 Ways to...", "7 Tips for...") should be used sparingly and only when the topic genuinely calls for enumeration.
@@ -155,7 +136,7 @@ CONTENT FORMAT BIAS:
 HUMANNESS & QUALITY RULES
 - DEPTH OVER BREADTH: Fewer sections with more substance beats many shallow sections. The content should be authoritative and in-depth, not a surface-level skim.
 - SPECIFIC OVER GENERIC: Use real examples, actual numbers, specific scenarios (e.g., "your Tuesday morning standup" not "team meetings")
-- VARIED RHYTHM: Mix paragraphs with 3-5 sentence punchy paragraphs and 5-11 sentence analytical ones
+- VARIED RHYTHM: Mix punchy 2-3 sentence paragraphs with occasional 4-5 sentence analytical ones
 - SHOW YOUR WORK: Explain the "why" behind advice, include the reasoning and tradeoffs
 - CONTRARIAN WELCOME: Challenge conventional career advice when you have a defensible alternative view
 - NO FLUFF PHRASES: Avoid "let's dive in", "in today's world", "unlock your potential", "game-changer", "at the end of the day"
@@ -165,12 +146,10 @@ HUMANNESS & QUALITY RULES
 - Each major section should feel like a mini-essay with a clear argument or framework
 
 CONTENT REQUIREMENTS:
-- Include 1 concrete example with roles, scenarios and resolution with vivid details
-- Provide exact scripts or phrases for difficult conversations when relevant
-- Build frameworks or mental models readers can apply (give them names if helpful)
-- Address the emotional or social dynamics explicitly - the awkwardness, the fear, the office politics 
-- Challenge at least one piece of conventional wisdom with a nuanced take
-- Give readers decision-making frameworks, not just "tips"
+- At most 1 brief, specific scenario — only if it genuinely sharpens the argument
+- Address the emotional reality explicitly — the awkwardness, the fear, the office politics
+- Challenge at least one piece of conventional wisdom with a nuanced, defensible take
+- Every section should advance the article's central argument, not just add another point
 - Avoid cliches and AI-sounding phrases at all costs
 
 OUTPUT FORMAT:

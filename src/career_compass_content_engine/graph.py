@@ -5,21 +5,21 @@ Graph topology
 --------------
                               ┌─── node_write ─── node_edit ─┐
                               │                               ▼
-START ── node_research ───────┤                         node_evaluate
-                              │                         (loop / done)
-                              └─── node_image_design                │
-                                         │                          ▼
-                                   [has prompt?]           node_prepare_metadata
-                                         │                          │
-                               node_image_generate → END    node_publish → END
+START ── node_research ───────┤                         node_evaluate ──┐
+                              │                                          │
+                              └─── node_image_design                    │
+                                         │                              ▼
+                               node_image_generate ──► node_prepare_metadata ── node_publish → END
 
 Parallel branches
 -----------------
 All nodes are ``async def``.  After node_research the CONTENT branch
 (write → edit → evaluate) and the IMAGE branch (image_design → image_generate)
 run as truly concurrent async tasks via ``graph.ainvoke()``.
-By the time node_prepare_metadata fires both edited_content and image_file_path
-are already in shared state.
+node_prepare_metadata is a fan-in node: it waits for BOTH branches to complete
+before executing — ensuring image_file_path is always set in shared state before
+node_publish reads it.  node_image_generate always runs (it handles the no-prompt
+case with a fast early return), keeping the fan-in unambiguous for LangGraph.
 
 Checkpointing
 -------------
@@ -384,6 +384,9 @@ def build_graph(
     async def node_image_generate(state: ContentState) -> dict:
         logger.info("🔵 [image_generate] starting...")
         image_plan = state.get("image_plan", {})
+        if not image_plan.get("prompt"):
+            logger.warning("⚠️  [image_generate] no prompt in image_plan — skipping generation")
+            return {"image_file_path": None, "image_generation_error": "no prompt"}
         prompt_text = _augment_image_prompt(image_plan)
         size = _aspect_ratio_to_size(image_plan)
         logger.info("📐 [image_generate] size: %s", size)
@@ -391,6 +394,11 @@ def build_graph(
         try:
             gen = ImageGenerator()
             gen.openai_api_key = settings.openai_api_key
+            # Honour the model configured in Settings (env override still respected
+            # inside _resolve_image_model, but Settings is the canonical source).
+            if settings.openai_image_model:
+                import os as _os
+                _os.environ.setdefault("OPENAI_IMAGE_MODEL", settings.openai_image_model)
             img_path = await _run_sync(lambda: gen.generate(prompt_text, size=size))
             # Sanity-check: reject suspiciously small files (e.g. 1x1 pixel fallbacks)
             if img_path.stat().st_size < 1024:
@@ -401,7 +409,8 @@ def build_graph(
             logger.info("✅ [image_generate] done")
         except Exception as exc:
             logger.warning("⚠️  [image_generate] failed: %s", exc)
-        return {"image_file_path": image_file_path}
+            return {"image_file_path": None, "image_generation_error": str(exc)}
+        return {"image_file_path": image_file_path, "image_generation_error": None}
 
     async def node_edit(state: ContentState) -> dict:
         # On first pass use blog_draft; on revisions use the previous edited_content
@@ -490,15 +499,25 @@ def build_graph(
 
     async def node_publish(state: ContentState) -> dict:
         logger.info("🔵 [publish] starting...")
+        image_path = state.get("image_file_path")
+        if image_path:
+            logger.info("🖼️  [publish] image available: %s", image_path)
+        else:
+            image_err = state.get("image_generation_error")
+            if image_err:
+                logger.warning("⚠️  [publish] publishing without image (generation failed: %s)", image_err)
+            else:
+                logger.warning("⚠️  [publish] publishing without image (no image_file_path in state)")
         result = await _run_sync(
             lambda: publisher.upload_to_webflow(
                 state.get("metadata_payload", {}),
                 state["edited_content"],
-                image_file_path=state.get("image_file_path"),
+                image_file_path=image_path,
             )
         )
+        result["image_attached"] = bool(image_path) and result.get("status") not in ("skipped", "error")
         status = result.get("status", "unknown")
-        logger.info("✅ [publish] done — status: %s", status)
+        logger.info("✅ [publish] done — status: %s  image_attached: %s", status, result["image_attached"])
 
         # Record this run in the persistent topic history
         research_payload = state.get("research_payload", {})
@@ -511,7 +530,7 @@ def build_graph(
             )
             topic_store.append(
                 topic=research_payload.get("topic", ""),
-                slug=research_payload.get("suggested_title", ""),
+                slug=state.get("metadata_payload", {}).get("slug") or research_payload.get("suggested_title", ""),
                 suggested_title=research_payload.get("suggested_title", ""),
                 final_score=state.get("evaluation_avg", 0.0),
                 revision_count=state.get("revision_count", 0),
@@ -531,12 +550,6 @@ def build_graph(
         if state.get("evaluation_passed") or state.get("revision_count", 0) >= MAX_REVISIONS:
             return "node_prepare_metadata"
         return "node_edit"
-
-    def route_after_image_design(state: ContentState) -> str:
-        """Skip image generation if the design step produced no prompt."""
-        if state.get("image_plan", {}).get("prompt"):
-            return "node_image_generate"
-        return END
 
     # ── Graph assembly ─────────────────────────────────────────────────────────
     builder = StateGraph(ContentState)
@@ -564,9 +577,16 @@ def build_graph(
     builder.add_edge("node_edit", "node_evaluate")
     builder.add_conditional_edges("node_evaluate", route_after_evaluate)
 
-    # Image branch: design → [generate if prompt exists] → END
-    # image_file_path is written to shared state and read by node_prepare_metadata
-    builder.add_conditional_edges("node_image_design", route_after_image_design)
+    # Image branch: design → generate → END (branch terminates here).
+    # node_image_generate sets image_file_path in shared LangGraph state and then
+    # terminates its branch.  The content branch (node_evaluate → node_prepare_metadata)
+    # runs independently; because image generation completes well before the content
+    # loop finishes, image_file_path is always present in shared state when
+    # node_prepare_metadata reads it.  Routing image_generate to END (rather than
+    # to node_prepare_metadata) prevents node_prepare_metadata from firing twice —
+    # once from the image branch and once from node_evaluate — which caused a
+    # double-publish bug.
+    builder.add_edge("node_image_design", "node_image_generate")
     builder.add_edge("node_image_generate", END)
 
     # Publishing branch (triggered by content loop completion)

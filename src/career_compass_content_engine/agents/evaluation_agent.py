@@ -18,9 +18,10 @@ Your job: Evaluate this edited blog post against our strict quality standards an
 SCORING CRITERIA (0-10 scale for each):
 
 1. **Word Count & Depth** (0-10)
-   - Total: At least 2,500 words = 10 points
-   - Each major H2 section: at least 500 words = full credit
-   - Deduct points for thin sections, paragraphs with only 2-3 sentences, or overall brevity
+   - 800–1,200 words is the target range. Penalize articles that pad to fill space just as much as ones that feel incomplete.
+   - 10 = Every section earns its place. The article is substantive without being bloated.
+   - Deduct points if sections feel like filler, or if the article ends abruptly without a real conclusion.
+   - Do NOT deduct points purely for being under 1,200 words if the content is genuinely complete.
    - Deduct points if content feels surface-level or lacks depth of analysis, nuance, or insight
 
 2. **Specific Examples & Details** (0-10)

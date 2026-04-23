@@ -179,6 +179,39 @@ class WebflowCMS:
         except Exception as exc:
             raise RuntimeError(f"Failed to list items from collection {collection_id}: {exc}")
 
+    def find_item_by_slug(self, collection_id: str, slug: str) -> Optional[Dict[str, Any]]:
+        """Return the first CMS item whose slug field matches *slug*, or None."""
+        offset = 0
+        page_size = 100
+        while True:
+            try:
+                result = self.list_items(collection_id, limit=page_size, offset=offset)
+            except Exception as exc:
+                logger.warning("[WebflowCMS] find_item_by_slug list_items failed: %s", exc)
+                return None
+            items = result.get("items", [])
+            for item in items:
+                if item.get("fieldData", {}).get("slug") == slug:
+                    return item
+            total = result.get("pagination", {}).get("total", 0)
+            offset += len(items)
+            if not items or offset >= total:
+                break
+        return None
+
+    def update_item(self, collection_id: str, item_id: str, field_data: Dict[str, Any]) -> Dict[str, Any]:
+        """PATCH an existing CMS item with the supplied field data."""
+        url = f"{WEBFLOW_API_BASE}/collections/{collection_id}/items/{item_id}"
+        try:
+            resp = self._request_with_retries("PATCH", url, json={"fieldData": field_data})
+            if resp.status_code not in (200, 201, 202):
+                raise RuntimeError(f"Update item failed: {resp.status_code} {resp.text}")
+            return resp.json()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to update CMS item {item_id} in collection {collection_id}: {exc}"
+            )
+
     def create_draft_blog_item(
         self,
         collection_id: str,
@@ -459,9 +492,9 @@ class PublishingAgent(BaseAgent):
         # determine slugs with sensible defaults
         field_slug_title = "name"
         field_slug_slug = "slug"
-        field_slug_article = "post-body"
-        field_slug_main_image = "main-image"
-        field_slug_thumb_image = "thumbnail-image"
+        field_slug_article = "blog-post-richt-text"  # actual slug in this Webflow collection
+        field_slug_main_image = "blog-post-featured-image-photo"
+        field_slug_thumb_image = "blog-post-thumbnail-image-photo"
         field_slug_description = "description"
         field_slug_author = "author"
 
@@ -476,8 +509,28 @@ class PublishingAgent(BaseAgent):
         else:
             field_slug_slug = first_plaintext_slug(exclude=(field_slug_title, *reserved_plaintext_slugs)) or field_slug_slug
 
-        field_slug_article = first_slug_by_type("RichText") or field_slug_article
-        image_slugs = [f.get("slug") for f in col_fields if f.get("type") == "Image"]
+        # RichText detection: Webflow may return the type with different casing/naming.
+        # Try exact match first, then case-insensitive, then fall back to slug keyword scan.
+        all_field_slugs = [f.get("slug") for f in col_fields]
+        richtext_slug = first_slug_by_type("RichText")
+        if not richtext_slug:
+            richtext_slug = next(
+                (f.get("slug") for f in col_fields
+                 if (f.get("type") or "").lower() in ("richtext", "rich-text", "rich_text", "richtextblock")),
+                None,
+            )
+        if not richtext_slug:
+            # Last resort: match by slug keywords
+            richtext_slug = next(
+                (s for s in all_field_slugs
+                 if s and any(k in s.lower() for k in ("rich", "body", "content", "article", "richt"))),
+                None,
+            )
+        field_slug_article = richtext_slug or field_slug_article
+        logger.debug("[PublishingAgent] resolved article field slug: %s", field_slug_article)
+
+        image_slugs = [f.get("slug") for f in col_fields
+                       if (f.get("type") or "").lower() == "image"]
         if any(s == "blog-post-featured-image-photo" for s in image_slugs):
             field_slug_main_image = "blog-post-featured-image-photo"
         else:
@@ -642,6 +695,7 @@ class PublishingAgent(BaseAgent):
         # Remove blog-post-featured-title-featured-card if it exists (Webflow computed field)
         extra_fields.pop("blog-post-featured-title-featured-card", None)
 
+        created_item_id: Optional[str] = None
         try:
             response = cms.create_draft_blog_item(
                 self.settings.webflow_collection_id,
@@ -662,10 +716,52 @@ class PublishingAgent(BaseAgent):
                 field_slug_main_image=field_slug_main_image,
                 field_slug_thumb_image=field_slug_thumb_image,
             )
+            created_item_id = response.get("id")
         except Exception as exc:  # pragma: no cover - network call
-            return {"status": "error", "reason": f"Webflow CMS create failed: {exc}"}
+            exc_str = str(exc)
+            if "already in database" in exc_str:
+                # Slug collision — append a date suffix to make the slug unique and retry once.
+                from datetime import date as _date
+                date_suffix = _date.today().strftime("%m%d")
+                slug_match = re.search(r"already in database: '([^']+)'", exc_str)
+                colliding_slug = slug_match.group(1) if slug_match else slugify(title)
+                new_slug = f"{colliding_slug}-{date_suffix}"
+                logger.info(
+                    "[PublishingAgent] Slug '%s' already exists — retrying with slug '%s'.",
+                    colliding_slug, new_slug,
+                )
+                try:
+                    # Inject the de-duped slug via extra_field_data override
+                    deduped_extra = dict(extra_fields)
+                    deduped_extra[field_slug_slug] = new_slug
+                    response = cms.create_draft_blog_item(
+                        self.settings.webflow_collection_id,
+                        title=title,
+                        description=description,
+                        article_html=article_html,
+                        author_item_id=author_id,
+                        main_image_url=hosted_image_url,
+                        thumb_image_url=thumb_image_url or hosted_image_url,
+                        main_image_alt=main_image_alt,
+                        thumb_image_alt=thumb_image_alt,
+                        extra_field_data=deduped_extra,
+                        field_slug_title=field_slug_title,
+                        field_slug_slug=field_slug_slug,
+                        field_slug_description=field_slug_description,
+                        field_slug_article=field_slug_article,
+                        field_slug_author=field_slug_author,
+                        field_slug_main_image=field_slug_main_image,
+                        field_slug_thumb_image=field_slug_thumb_image,
+                    )
+                    created_item_id = response.get("id")
+                except Exception as retry_exc:
+                    return {
+                        "status": "error",
+                        "reason": f"Slug collision retry also failed: {retry_exc}",
+                    }
+            else:
+                return {"status": "error", "reason": f"Webflow CMS create failed: {exc}"}
 
-        created_item_id = response.get("id")
         if not created_item_id:
             return {
                 "status": "error",
@@ -673,15 +769,17 @@ class PublishingAgent(BaseAgent):
                 "webflow_item": response,
             }
 
+        publish_response: Dict[str, Any] = {}
         try:
             publish_response = cms.publish_items(self.settings.webflow_collection_id, [created_item_id])
         except Exception as exc:  # pragma: no cover - network call
-            return {
-                "status": "error",
-                "reason": f"Webflow publish failed after create: {exc}",
-                "webflow_item": response,
-                "webflow_item_id": created_item_id,
-            }
+            # Publish validation errors often mean a required collection field (e.g. image) is
+            # missing.  The item already exists as a draft — log the failure and continue so
+            # the caller receives the webflow_item_id rather than a bare error dict.
+            logger.warning(
+                "[PublishingAgent] Webflow publish failed (item saved as draft): %s", exc
+            )
+            publish_response = {"error": str(exc)}
 
         # Refresh the item so callers receive authoritative publish flags/timestamps.
         try:

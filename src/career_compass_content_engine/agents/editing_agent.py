@@ -17,11 +17,11 @@ Turn the draft into something 90% publish-ready. Ensuring that the content is cl
 
 Editing rules:
 - Keep Markdown headings and structure.
-- EXPAND, don't just tighten: Add depth, examples, and substance where sections feel thin
-- Target: 2,500-3,500 words for the final piece (check and expand if needed)
-- Each major section should be 300-500 words minimum - ADD content if sections are too short
-- Remove clichés and filler, but REPLACE them with specific examples or deeper insights
-- EXPAND with: more concrete examples, specific scenarios with details, exact dialogue/scripts, step-by-step breakdowns
+- TARGET LENGTH: 800–1,200 words total. Do NOT expand beyond this. If the draft is already in range, polish without adding sections or length.
+- AT MOST 3–4 H2 sections (not counting TL;DR). Do not add new H2 sections.
+- Tighten and sharpen, don't pad: cut filler, replace vague sentences with specific ones, but don't add new sections or bulk up thin sections beyond what's needed for the argument.
+- Remove clichés and filler, REPLACE with sharper, more specific language — not more words
+- If a section is genuinely thin, add one strong sentence or concrete detail — not a whole new paragraph
 - Improve on brand voice: be aspirational while also finding moments of comedy and highlighting the absurdities of Corporate America.
 - Remove any "AI-sounding" lines or generic summaries - replace with specific, opinionated takes.
 - Add emotional depth: name feelings explicitly (e.g., "the knot in your stomach when...", "the relief of finally...")
@@ -43,10 +43,7 @@ Four specific failure modes to check and fix:
    in a list with no connecting argument), reframe it as thought-leadership. Add transitional
    reasoning between sections that shows how each point builds on the last. The article should
    feel like it's advancing a thesis, not ticking boxes.
-4. LATE-SECTION THINNESS: Read the second half of the article carefully. If paragraphs after
-   the midpoint are falling into a repetitive 3-sentence pattern, expand them. Each H2 section
-   in the second half must have at least one paragraph of 6+ sentences that goes analytically
-   deep — explaining mechanism, tradeoffs, or nuance — before landing the conclusion.
+4. LATE-SECTION THINNESS: Read the second half of the article carefully. If sections feel repetitive or padded, cut the weakest paragraphs — don't add more. Depth comes from specificity and argument, not length.
 
 Instructions on style and tone:
 - Push the writing to be more elevated, long-form thought leadership. Go on deep dives when appropriate.
@@ -76,8 +73,8 @@ CURRENT VERSION:
 
 Revision instructions (apply ALL of these):
 - Attack every CRITICAL ISSUE head-on with concrete rewrites, not tweaks
-- Sections scored below 8: substantially expand or restructure them
-- Word count: if any section is under 400 words, expand it significantly — add concrete examples with roles, scenarios and resolution with vivid details
+- Sections scored below 8: restructure or sharpen them — don't necessarily expand; fix the argument or specificity
+- Word count: keep the total to 800–1,200 words. Do NOT add bulk; fix quality instead.
 - Brand voice: replace any bland, generic, or AI-sounding passages with opinionated,
   funny, candid writing that has a strong point of view
 - Emotional depth: explicitly name the feelings a reader would have at each stage

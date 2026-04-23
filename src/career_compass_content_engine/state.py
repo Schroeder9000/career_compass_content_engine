@@ -36,11 +36,13 @@ class ContentState(TypedDict, total=False):
     feedback_text: str                   # Formatted critique sent back to EditingAgent
 
     # ── Image branch (runs in parallel with content loop) ─────────────────────
-    # node_image_design and node_image_generate run in the same superstep as
-    # node_write/node_edit, so image_file_path is always populated before
-    # node_prepare_metadata reads it unless image generation fails.
-    image_plan: Dict[str, Any]       # Prompt, alt_text, palette, aspect_ratio
-    image_file_path: Optional[str]   # Local path to generated image (or None)
+    # node_image_design and node_image_generate run concurrently with the
+    # write/edit/evaluate loop. Both branches fan in to node_prepare_metadata,
+    # which waits for both to complete before executing. This guarantees
+    # image_file_path is always set in shared state before node_publish reads it.
+    image_plan: Dict[str, Any]           # Prompt, alt_text, palette, aspect_ratio
+    image_file_path: Optional[str]       # Local path to generated image (or None)
+    image_generation_error: Optional[str]  # Error message if generation failed, else None
 
     # ── Publishing (node_prepare_metadata, node_publish) ──────────────────────
     metadata_payload: Dict[str, Any]  # Title, slug, summary, tags, etc.
