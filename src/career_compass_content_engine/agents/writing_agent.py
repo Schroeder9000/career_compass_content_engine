@@ -64,7 +64,7 @@ Before you write, decide on a clear POV:
 - What should they do instead (your framework)?
 - What is a slightly contrarian but true take you can defend?
 
-Write a complete blog post in Markdown (800–1,200 words) with the structure below.
+Write a complete blog post in Markdown. Preferred range is roughly 1,000-2,200 words, but completeness and ending quality matter more than strict length.
 
 CRITICAL: DO NOT label structural elements like "Hook" or "CTA" as visible headings. These are instructions for you, not section titles.
 
@@ -92,7 +92,7 @@ REQUIRED STRUCTURE
 3) TL;DR section (use heading "## TL;DR"): 3-5 sharp, non-obvious bullets that preview your key insights — no generic career advice
 
 4) Main content sections (H2/H3): Follow the outline provided, adapting headings for natural flow
-   - HARD LIMIT: AT MOST 3–4 H2 sections total (not counting TL;DR). If the outline has more items, consolidate them. Sections 6 and 7 (Career Compass mention + Closing) are REQUIRED and must fit within the word count — plan for them from the start.
+   - Use as many H2 sections as needed for a complete argument (typically 4-7, not counting TL;DR). Avoid shallow one-paragraph sections.
    - Each H2 section should be 2-4 paragraphs of genuine analysis — not a checklist or a series of tips.
    - EXAMPLE: Include at most ONE brief, specific example across the entire article — woven naturally
      into the argument where it lands hardest. It does not need a named character or dialogue if the
@@ -124,8 +124,8 @@ REQUIRED STRUCTURE
    - Leave readers with a concrete next step or mindset shift
 
 ⚠️ FINAL CHECK — Before you stop writing, confirm both of these are in the article:
-   [ ] Career Compass is mentioned naturally near the end
-   [ ] There is a proper closing section (not a template or script)
+   [ ] Career Compass is mentioned naturally as a resource for readers that want extra support building a growth plan, getting weekly feedback and tracking career KPIs like Job Satisfaction, Stress, Work-Life Balance, Relationship health and more.
+   [ ] There is a proper closing section that synthesizes the key insight and provides a concrete next step or mindset shift (not a template or script)
 
 CONTENT FORMAT BIAS:
 - This is a thought-leadership blog, not a listicle. Pure list-style articles ("5 Ways to...", "7 Tips for...") should be used sparingly and only when the topic genuinely calls for enumeration.

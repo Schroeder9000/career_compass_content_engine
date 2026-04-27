@@ -17,11 +17,11 @@ Your job: Evaluate this edited blog post against our strict quality standards an
 
 SCORING CRITERIA (0-10 scale for each):
 
-1. **Word Count & Depth** (0-10)
-   - 800–1,200 words is the target range. Penalize articles that pad to fill space just as much as ones that feel incomplete.
-   - 10 = Every section earns its place. The article is substantive without being bloated.
+1. **Depth & Completeness** (0-10)
+    - There is no strict word-count cap. Reward complete, high-quality coverage; penalize bloat and shallow filler.
+    - 10 = Every section earns its place. The article is substantive, complete, and cohesive without unnecessary padding.
    - Deduct points if sections feel like filler, or if the article ends abruptly without a real conclusion.
-   - Do NOT deduct points purely for being under 1,200 words if the content is genuinely complete.
+    - Do NOT deduct points solely for article length (short or long) if the content is genuinely complete.
    - Deduct points if content feels surface-level or lacks depth of analysis, nuance, or insight
 
 2. **Specific Examples & Details** (0-10)

@@ -4,11 +4,12 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from langchain_community.callbacks import get_openai_callback
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 from .agents.base import AgentContext
 from .config import Settings, configure_logging, get_settings
@@ -37,12 +38,10 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         "writing": {
             "model": "gpt-5.4",  # Best for long-form creative content
             "temperature": 0.7,  # Higher creativity for engaging content
-            "max_tokens": 2200,  # Hard ceiling: ~1,200 words of Markdown (target range)
         },
         "editing": {
             "model": "gpt-5.4",  # Best quality for refinement
             "temperature": 0.5,  # Balanced for consistency with creativity
-            "max_tokens": 2200,  # Match writing agent ceiling — editor polishes, doesn't expand
         },
         "image": {
             "model": "gpt-5.4",  # Best for creative visual concepts
@@ -59,7 +58,6 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         "revision": {
             "model": "gpt-5.4",  # Best quality model for revision editing
             "temperature": 0.8,  # Higher than first edit — force genuinely different rewrites
-            "max_tokens": 2200,  # Same ceiling as writing/editing
         },
         "default": {
             "model": "gpt-5.4",  # Default to best general model
@@ -67,12 +65,14 @@ def build_llm(settings: Settings, task_type: str = "default") -> ChatOpenAI:
         },
     }
     
-    config = model_config.get(task_type, model_config["default"])
+    config = cast(Dict[str, Any], model_config.get(task_type, model_config["default"]))
+    model_name = cast(str, config.get("model", "gpt-5.4"))
+    temperature = float(config.get("temperature", 0.7))
+    api_key = SecretStr(settings.openai_api_key) if settings.openai_api_key else None
     return ChatOpenAI(
-        model=config["model"],
-        api_key=settings.openai_api_key,
-        temperature=config["temperature"],
-        max_tokens=config.get("max_tokens"),
+        model=model_name,
+        api_key=api_key,
+        temperature=temperature,
     )
 
 

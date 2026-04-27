@@ -130,6 +130,50 @@ def _aspect_ratio_to_size(image_plan: Dict[str, Any]) -> str:
     }.get(ar, "1024x1024")
 
 
+def _has_substantive_closing(markdown: str) -> bool:
+    """Heuristic check that the ending contains at least two real prose paragraphs."""
+    if not markdown:
+        return False
+    tail = markdown[-2200:]
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", tail) if b.strip()]
+    prose_blocks = [
+        b for b in blocks
+        if not b.startswith("#")
+        and not b.startswith(">")
+        and not b.startswith("-")
+        and not re.match(r"^\d+\.\s", b)
+    ]
+    if len(prose_blocks) < 2:
+        return False
+    return len(prose_blocks[-1].split()) + len(prose_blocks[-2].split()) >= 80
+
+
+def _check_required_ending(markdown: str) -> list[str]:
+    """Return unmet hard requirements for final publish quality."""
+    issues: list[str] = []
+    if not re.search(r"\bcareer\s+compass\b", markdown or "", re.IGNORECASE):
+        issues.append("Missing a natural 'Career Compass' mention near the end of the article.")
+    if not _has_substantive_closing(markdown or ""):
+        issues.append("Closing is too abrupt; needs 2-4 substantive concluding paragraphs.")
+    return issues
+
+
+def _append_fallback_closing(markdown: str) -> str:
+    """Final safety net if LLM repair still misses required ending elements."""
+    closing = (
+        "\n\nBefore you publish your next move at work, make one choice on purpose: "
+        "ask earlier, with sharper context, while options are still open. "
+        "That is what separates reactive stress from professional judgment.\n\n"
+        "If you want help building that habit, Career Compass is designed for exactly this moment: "
+        "a personalized growth plan, weekly coaching nudges, and visible progress tracking so your "
+        "career growth is deliberate instead of accidental."
+    )
+    base = (markdown or "").rstrip()
+    if re.search(r"\bcareer\s+compass\b", base, re.IGNORECASE) and _has_substantive_closing(base):
+        return base
+    return base + closing
+
+
 # ── Graph factory ─────────────────────────────────────────────────────────────
 def build_graph(
     settings: Optional[Settings] = None,
@@ -488,14 +532,34 @@ def build_graph(
 
     async def node_prepare_metadata(state: ContentState) -> dict:
         logger.info("🔵 [prepare_metadata] starting...")
-        result = await _run_sync(lambda: publisher.prepare_metadata(state["edited_content"]))
+        content_for_publish = state.get("edited_content", "")
+        ending_issues = _check_required_ending(content_for_publish)
+
+        if ending_issues:
+            logger.warning("⚠️  [prepare_metadata] ending guard triggered: %s", " | ".join(ending_issues))
+            repair_feedback = (
+                "HARD REQUIREMENTS BEFORE PUBLISH:\n"
+                "- Add a natural Career Compass mention in the final section/conclusion.\n"
+                "- End with 2-4 substantive closing paragraphs that synthesize the argument and leave a concrete mindset shift.\n"
+                "- Preserve the article's core argument and tone. Avoid adding FAQ/template sections.\n\n"
+                f"Current issues: {'; '.join(ending_issues)}"
+            )
+            repaired = await _run_sync(lambda: revision_editor_agent.refine(content_for_publish, feedback=repair_feedback))
+            content_for_publish = repaired.content.get("message", str(repaired.raw_response))
+
+            remaining_issues = _check_required_ending(content_for_publish)
+            if remaining_issues:
+                logger.warning("⚠️  [prepare_metadata] LLM repair incomplete; applying deterministic fallback closing.")
+                content_for_publish = _append_fallback_closing(content_for_publish)
+
+        result = await _run_sync(lambda: publisher.prepare_metadata(content_for_publish))
         metadata_payload = _safe_parse(result.raw_response)
         logger.debug("[prepare_metadata] payload keys: %s", list(metadata_payload.keys()))
         if not metadata_payload.get("content_ready", True):
             issues = metadata_payload.get("blocking_issues", [])
             logger.warning("⚠️  [prepare_metadata] content_ready=False. Blocking issues: %s", issues)
         logger.info("✅ [prepare_metadata] done")
-        return {"metadata_payload": metadata_payload}
+        return {"metadata_payload": metadata_payload, "edited_content": content_for_publish}
 
     async def node_publish(state: ContentState) -> dict:
         logger.info("🔵 [publish] starting...")

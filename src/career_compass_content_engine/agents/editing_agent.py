@@ -17,8 +17,8 @@ Turn the draft into something 90% publish-ready. Ensuring that the content is cl
 
 Editing rules:
 - Keep Markdown headings and structure.
-- TARGET LENGTH: 800–1,200 words total. Do NOT expand beyond this. If the draft is already in range, polish without adding sections or length.
-- AT MOST 3–4 H2 sections (not counting TL;DR). Do not add new H2 sections.
+- Length guidance: usually 1,000-2,200 words, but prioritize complete, high-quality coverage over hitting a rigid target.
+- Preserve a coherent structure; add or merge H2 sections when needed for flow.
 - Tighten and sharpen, don't pad: cut filler, replace vague sentences with specific ones, but don't add new sections or bulk up thin sections beyond what's needed for the argument.
 - Remove clichés and filler, REPLACE with sharper, more specific language — not more words
 - If a section is genuinely thin, add one strong sentence or concrete detail — not a whole new paragraph
@@ -74,7 +74,7 @@ CURRENT VERSION:
 Revision instructions (apply ALL of these):
 - Attack every CRITICAL ISSUE head-on with concrete rewrites, not tweaks
 - Sections scored below 8: restructure or sharpen them — don't necessarily expand; fix the argument or specificity
-- Word count: keep the total to 800–1,200 words. Do NOT add bulk; fix quality instead.
+- Length guidance: usually 1,000-2,200 words, but prioritize completeness and quality over strict limits.
 - Brand voice: replace any bland, generic, or AI-sounding passages with opinionated,
   funny, candid writing that has a strong point of view
 - Emotional depth: explicitly name the feelings a reader would have at each stage
@@ -92,6 +92,7 @@ Revision instructions (apply ALL of these):
   with the same sentence count
 - Kill every cliché and replace it with a specific, vivid, opinionated sentence
 - You MAY restructure, reorder, or partially rewrite any section to fix the issues
+- Ensure there is a strong closing section that naturally integrates Career Compass as a solution, not a separate add-on
 
 Return ONLY the revised Markdown.
 """
