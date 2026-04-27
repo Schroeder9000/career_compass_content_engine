@@ -9,6 +9,7 @@ from .config import get_settings
 from .rag import EXAMPLES_DIR, SUPPORTED_SUFFIXES, _read_text
 
 from .supervisor import Supervisor
+from .supervisor import WorkflowResult
 
 
 def _fetch_webflow_content(settings) -> str:
@@ -91,7 +92,7 @@ def load_existing_content() -> str:
     return "\n\n\n".join(sections) if sections else "No existing content available."
 
 
-def main() -> None:  # pragma: no cover - CLI entry point
+def main() -> WorkflowResult:  # pragma: no cover - CLI entry point
     settings = get_settings()
     supervisor = Supervisor(settings=settings)
     context = AgentContext(
@@ -111,6 +112,7 @@ def main() -> None:  # pragma: no cover - CLI entry point
         f"(prompt: {result.prompt_tokens} / completion: {result.completion_tokens})  "
         f"est. cost: ${result.total_cost_usd:.4f}"
     )
+    return result
 
 
 if __name__ == "__main__":
