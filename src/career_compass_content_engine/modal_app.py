@@ -23,14 +23,42 @@ _secrets = [modal.Secret.from_name("careeer_compass_langchain_content_engine")]
 
 
 def _send_email_alert(subject: str, body: str) -> bool:
-    """Send an email alert via Resend when RESEND_API_KEY is configured."""
-    api_key = os.getenv("RESEND_API_KEY")
-    if not api_key:
-        print("[alerts] RESEND_API_KEY not set; skipping email alert")
-        return False
-
+    """Send an email alert via MailerSend (or Resend fallback)."""
     to_email = os.getenv("ALERT_TO_EMAIL", "datadave@careeraiapp.com")
     from_email = os.getenv("ALERT_FROM_EMAIL", "alerts@careeraiapp.com")
+
+    # Preferred provider: MailerSend
+    api_key = os.getenv("MAILERSEND_API_KEY")
+    if api_key:
+        payload = {
+            "from": {"email": from_email, "name": "Career Compass Alerts"},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "text": body,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        try:
+            response = requests.post(
+                "https://api.mailersend.com/v1/email",
+                headers=headers,
+                json=payload,
+                timeout=20,
+            )
+            response.raise_for_status()
+            return True
+        except Exception as exc:
+            print(f"[alerts] MailerSend alert failed: {exc}")
+
+    # Fallback provider: Resend
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        print("[alerts] MAILERSEND_API_KEY/RESEND_API_KEY not set; skipping email alert")
+        return False
+
     payload = {
         "from": from_email,
         "to": [to_email],
