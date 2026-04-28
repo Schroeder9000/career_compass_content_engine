@@ -111,7 +111,7 @@ def _notify(subject: str, body: str, ok: bool) -> None:
     print(f"[alerts] sent: email={email_sent} webhook={webhook_sent}")
 
 @app.function(
-    schedule=modal.Cron("0 12 * * 1-5"),
+    schedule=modal.Cron("0 7 * * 1-5", timezone="America/New_York"),
     secrets=_secrets,
     timeout=900,
 )
