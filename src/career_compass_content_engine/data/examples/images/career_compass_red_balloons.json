@@ -1,0 +1,23 @@
+{
+  "image_file": "career_compass_red_balloons.png",
+  "title": "Red Balloons",
+  "theme": "lift, momentum, and expanding opportunity",
+  "visual_metaphor": "upward-drifting forms pulling the narrative toward progress",
+  "lighting_direction": "bright open sky treatment with warm, optimistic contrast",
+  "viewpoint": "low-to-mid angle looking into upward motion",
+  "layout_archetype": "center-offset momentum with distributed accents",
+  "complexity_level": "minimal to medium symbolic",
+  "palette_notes": "Orange-red momentum accents balanced with grounded neutrals",
+  "prompt_notes": [
+    "Use a center-offset composition that still spans full 16:9 width.",
+    "Create rhythmic repetition to imply momentum and growth.",
+    "Keep forms symbolic and elegant, not whimsical cartoon style.",
+    "Maintain grounded brand credibility while conveying lift."
+  ],
+  "avoid": [
+    "childlike party imagery",
+    "flat monochrome background",
+    "overly dark atmospheric tone"
+  ],
+  "aspirational_growth_rationale": "Communicates emotional lift and upward trajectory without losing professional seriousness."
+}

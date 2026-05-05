@@ -102,8 +102,12 @@ def _augment_image_prompt(image_plan: Dict[str, Any]) -> str:
             "LEFT THIRD has visual elements, CENTER THIRD has visual elements, "
             "RIGHT THIRD has visual elements. "
             "Elements flow and connect across all three zones creating a continuous "
-            "horizontal narrative. "
+            "horizontal narrative with asymmetrical balance and varied depth. "
             f"{prompt_text} "
+            "LIGHTING REQUIREMENT: Brighter, optimistic scene with warm highlights, "
+            "open midtones, and controlled shadows; avoid gloomy low-key darkness. "
+            "DIVERSITY REQUIREMENT: Favor non-repetitive viewpoint and composition "
+            "choices; do not default to a centered focal subject. "
             "CRITICAL SPATIAL REQUIREMENTS: Visual elements must extend from the "
             "FAR LEFT EDGE all the way to the FAR RIGHT EDGE. "
             "Use repeating patterns, flowing lines, or distributed subjects that span "
@@ -114,7 +118,8 @@ def _augment_image_prompt(image_plan: Dict[str, Any]) -> str:
     return (
         f"FULL-FRAME COMPOSITION: {prompt_text} "
         "CRITICAL: Create a full-frame composition that fills the entire canvas "
-        "edge-to-edge with no borders, padding, or empty space around the illustration."
+        "edge-to-edge with no borders, padding, or empty space around the illustration. "
+        "Use brighter, optimistic lighting and avoid heavy-shadow, gloomy outputs."
     )
 
 

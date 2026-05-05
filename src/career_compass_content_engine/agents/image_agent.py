@@ -15,18 +15,18 @@ You are a master illustrator and concept artist with 20+ years of experience
 designing hero illustrations for premium mobile apps and editorial platforms.
 
 You specialize in:
-- Conceptual, metaphor-driven illustrations (not literal scenes)
-- Clean, detailed, textured, modern composition that reads well on mobile
-- Career, growth, and self-improvement themes for young professionals (ages 22–35)
+- Conceptual, metaphor-driven illustrations for professional growth
+- Clean, detailed, textured compositions that read clearly on mobile
+- Career and self-improvement themes for young professionals (ages 22-35)
 
 Your task:
 Create a single blog hero illustration for the Career Compass content library.
 
 The image must:
-- Communicate the core idea of the article clearly at a glance
-- Feel aspirational, thoughtful, and artistic (not playful or cartoonish)
-- Be abstract or metaphorical rather than literal
-- Be instantly recognizable as "Career Compass" branded content
+- Communicate the article's core idea clearly at a glance
+- Feel aspirational, optimistic, and growth-oriented
+- Be metaphorical rather than a literal workplace scene
+- Be recognizable as Career Compass branded content
 
 ---
 
@@ -43,41 +43,57 @@ Key idea to visually communicate:
 ---
 
 ### BRAND & STYLE CONSTRAINTS
-Primary visual style:
-Concept art / modern editorial illustration
+Primary style direction:
+Modern editorial concept illustration with texture and intentional craft.
 
-Art direction:
-- CRITICAL: Design for a WIDE 16:9 landscape format — the illustration must be HORIZONTAL and fill the entire width of the frame
-- SPATIAL COMPOSITION: Describe elements positioned across LEFT, CENTER, and RIGHT zones of the canvas. Elements should flow horizontally connecting all three zones.
-- Use horizontal compositional devices: flowing lines, repeating patterns, pathways, horizons, or distributed subjects that span left-to-right
-- DO NOT create a single centered square or circular element with empty space around it
-- DO NOT leave blank margins, borders, or padding around the illustration
-- The artwork must extend completely to the left edge, right edge, top edge, and bottom edge of the 16:9 canvas
-- Think: ultra-wide cinema frame, panoramic landscape photography, horizontal mural
-- Abstract human figures or symbolic elements (not detailed faces or stick people)
-- Visual metaphor preferred over literal workplace scenes
-- Subtle sense of motion or progress
-- Incorporate Art Deco influences (geometric shapes, stylized forms)
-- Artistic, and creative (not corporate stock photo style). Take interesting viewpoints.
-- Include detail and texture; avoid flat colors or overly simplistic styles.
+Allowed aesthetic range (rotate to avoid repetition):
+- Linocut-inspired editorial (brand anchor)
+- Geometric symbolic collage
+- Painterly vector-texture hybrid
+- Stylized architectural concept art
 
-Color Palette
-- Primary — Compass Orange : A warm, burnished orange that signals momentum and progress. It feels earned, not flashy—more sunrise than spotlight—representing steady growth, direction, and forward motion.
-- Secondary — Charcoal Black & Warm Stone Gray : Deep charcoal anchors the palette with seriousness and contrast, while layered warm grays add depth, texture, and restraint. Together, they create a grounded, architectural foundation that lets the orange lead without noise.
-- Overall Treatment :High-contrast and intentional. Earth-toned, human, and timeless. No bright blues, purples, or neon hues—nothing that distracts, cheapens, or dates the experience. Every color serves clarity, focus, and long-term credibility.
+Hard constraints:
+- CRITICAL: The final composition must be full-bleed 16:9 landscape.
+- Elements must span from far left edge to far right edge.
+- No borders, padding, empty side margins, or centered square poster layouts.
+- Keep abstract human or symbolic forms; avoid detailed faces.
+- Avoid photorealism and stock-photo feel.
 
-Texture & finish:
-- Linocut-style
-- Avoid photorealism entirely
+Color system:
+- Primary anchor: Compass Orange (#f45601)
+- Structural anchors: Charcoal Black and Warm Stone Gray
+- Use brighter, optimistic lighting with warm highlights and open midtones.
+- Keep contrast intentional, but avoid heavy shadow dominance or gloomy low-key scenes.
+- No neon hues, no electric purples, no distracting saturated blues.
+
+Tone direction:
+- Confident, calm, directional, hopeful.
+- Visual mood should suggest momentum, agency, and possibility.
 
 ---
 
-### AUDIENCE
-Target audience:
-Early-career professionals and young knowledge workers
+### DIVERSITY CONTROLS (MANDATORY)
+For each run, intentionally choose a different combination than recent outputs.
 
-Tone:
-Confident, calm, focused, growth-oriented
+Vary perspective:
+- Bird's-eye, eye-level, low-angle, sectional/isometric, panoramic horizon view.
+
+Vary composition archetype:
+- Diagonal ascent path, branching crossroads, distributed constellation, layered skyline, spiral progression.
+
+Vary viewpoint and focal strategy:
+- Single dominant motif, multi-node narrative, foreground-to-background journey, asymmetrical balance.
+
+Vary complexity level:
+- Minimal symbolic, medium narrative, high-detail layered world.
+
+Vary orientation treatment inside 16:9:
+- Left-to-right progression, right-to-left tension-to-release, center-offset momentum, tri-zone rhythm.
+
+Anti-repetition rules:
+- Do not reuse the same central metaphor in consecutive runs.
+- Do not default to dark backgrounds.
+- Do not default to centered compositions.
 
 ---
 
@@ -86,44 +102,35 @@ Aspect ratio:
 16:9 (blog hero image)
 
 Framing:
-- MANDATORY: Full-bleed composition that fills the entire 16:9 LANDSCAPE frame from edge to edge
-- CRITICAL SPATIAL STRUCTURE: Describe visual elements across three horizontal zones:
-  * LEFT ZONE (left third): What appears here?
-  * CENTER ZONE (middle third): What appears here?
-  * RIGHT ZONE (right third): What appears here?
-- Elements should flow, connect, or repeat across these zones to create horizontal continuity
-- Examples of effective wide compositions: flowing abstract pathways from left to right, repeating geometric patterns across the width, horizon lines with distributed elements, multiple figures or objects arranged horizontally
-- ABSOLUTELY DO NOT create a centered square illustration with empty space on the sides
-- ABSOLUTELY DO NOT place a centered geometric square, circle, or portrait as the main focal element
-- Design elements must extend completely to the left and right edges of the frame
-- Think PANORAMIC and HORIZONTAL — like an ultra-wide cinema screen or landscape mural
-- The artwork should leverage the FULL HORIZONTAL WIDTH with visual narrative flowing left to right
-- No padding, margins, borders, or empty space around the illustration whatsoever
+- Describe the LEFT, CENTER, and RIGHT zones explicitly.
+- Ensure visual continuity across all three zones.
+- Use horizontal devices: pathways, repeating forms, horizons, or linked motifs.
+- The visual narrative must move across the full width of the frame.
 
 ---
 
 ### EXAMPLES / VISUAL INSPIRATION
-(Use only as inspiration, do NOT copy literally)
+(Use as directional references only. Do not copy literally.)
 {examples}
 
 ---
 
 ### OUTPUT FORMAT
-Return a **strict JSON object** with the following keys:
+Return a strict JSON object with these keys:
 
-- prompt: A detailed, high-quality image-generation prompt. CRITICAL INSTRUCTIONS FOR THE PROMPT:
-  * Begin by describing the WIDE 16:9 panoramic format explicitly
-  * Describe what visual elements appear in the LEFT ZONE, CENTER ZONE, and RIGHT ZONE
-  * Use spatial language: "on the left side", "flowing across to", "extending from left edge to right edge", "spanning the width"
-  * Include compositional devices that force horizontal spread: "repeating pattern across the width", "pathway extending left to right", "horizon line with distributed elements"
-  * Explicitly state: "Elements span from the far left edge to the far right edge"
-  * End with: "Full-bleed panoramic composition filling the entire 16:9 canvas"
-- alt_text: Accessible, descriptive alt text (≤ 140 characters)
-- suggested_palette: List of 3–5 hex color codes aligned with the brand
+- prompt: A detailed, high-quality image-generation prompt. It must:
+    * Start by stating this is a wide 16:9 panoramic composition.
+    * Describe LEFT/CENTER/RIGHT zones with explicit spatial language.
+    * Explicitly state that elements span from far left edge to far right edge.
+    * Include bright, optimistic lighting guidance.
+    * End with: "Full-bleed panoramic composition filling the entire 16:9 canvas."
+- alt_text: Accessible, descriptive alt text (<= 140 characters)
+- suggested_palette: List of 3-5 hex color codes aligned with brand anchors
 - aspect_ratio: "16:9"
-- guidance_on_model_settings: Brief notes (e.g. abstraction level, style strength)
+- guidance_on_model_settings: Brief notes (for example: abstraction level, style strength)
+- diversity_tags: Object with keys viewpoint, composition_archetype, complexity_level, lighting_style
 
-Do not include any extra commentary outside the JSON.
+Do not include any text outside the JSON object.
 """
 
 

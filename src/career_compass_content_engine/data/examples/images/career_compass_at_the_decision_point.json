@@ -1,0 +1,23 @@
+{
+  "image_file": "career_compass_at_the_decision_point.png",
+  "title": "At The Decision Point",
+  "theme": "career crossroads and intentional choice",
+  "visual_metaphor": "multiple paths converging at a bright decision gate",
+  "lighting_direction": "bright optimistic daylight with warm highlights",
+  "viewpoint": "high oblique view with depth layers",
+  "layout_archetype": "branching crossroads across left-center-right zones",
+  "complexity_level": "medium narrative complexity",
+  "palette_notes": "Compass Orange accents over charcoal and warm stone gray",
+  "prompt_notes": [
+    "Use full-bleed 16:9 composition with explicit left, center, right storytelling.",
+    "Show transition from uncertainty on one side to clarity on the brighter side.",
+    "Keep metaphor conceptual and avoid literal office scenes.",
+    "Introduce asymmetrical balance to avoid repetitive centered layouts."
+  ],
+  "avoid": [
+    "dark, low-key lighting",
+    "single centered icon on empty background",
+    "photoreal stock-photo style"
+  ],
+  "aspirational_growth_rationale": "Represents agency and momentum by showing a confident choice toward a brighter professional path."
+}

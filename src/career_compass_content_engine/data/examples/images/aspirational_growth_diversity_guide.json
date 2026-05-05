@@ -1,0 +1,64 @@
+{
+  "collection_name": "Career Compass Image Direction - Aspirational Growth Diversity Guide",
+  "objective": "Generate brighter, aspirational, growth-oriented visuals with wide variation in perspective, layout, orientation treatment, viewpoint, and complexity.",
+  "hard_constraints": {
+    "aspect_ratio": "16:9",
+    "full_bleed": true,
+    "brand_palette_anchor": [
+      "#f45601",
+      "charcoal black",
+      "warm stone gray"
+    ]
+  },
+  "lighting_policy": {
+    "target": "strongly brighter and optimistic",
+    "required": [
+      "warm highlights",
+      "open midtones",
+      "clear visual readability"
+    ],
+    "avoid": [
+      "heavy shadow dominance",
+      "gloomy low-key scenes"
+    ]
+  },
+  "diversity_dimensions": {
+    "perspective": [
+      "birds_eye",
+      "eye_level",
+      "low_angle",
+      "isometric_or_sectional",
+      "panoramic_horizon"
+    ],
+    "composition": [
+      "diagonal_ascent",
+      "branching_crossroads",
+      "distributed_constellation",
+      "layered_skyline",
+      "spiral_progression"
+    ],
+    "orientation_treatment_in_16x9": [
+      "left_to_right_progression",
+      "right_to_left_release",
+      "center_offset_momentum",
+      "tri_zone_rhythm"
+    ],
+    "complexity": [
+      "minimal_symbolic",
+      "medium_narrative",
+      "high_detail_layered"
+    ]
+  },
+  "anti_repetition": [
+    "Do not repeat the same central metaphor in back-to-back generations.",
+    "Avoid repeated centered compositions.",
+    "Avoid repeatedly dark backgrounds.",
+    "Rotate perspective and composition archetype across runs."
+  ],
+  "brand_voice": [
+    "aspirational",
+    "calm confidence",
+    "professional momentum",
+    "human-centered growth"
+  ]
+}

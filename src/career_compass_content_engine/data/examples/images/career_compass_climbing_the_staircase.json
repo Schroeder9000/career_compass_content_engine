@@ -1,0 +1,23 @@
+{
+  "image_file": "career_compass_climbing_the_staircase.png",
+  "title": "Climbing The Staircase",
+  "theme": "steady professional growth through compounding effort",
+  "visual_metaphor": "ascending staircase that expands into new levels of opportunity",
+  "lighting_direction": "sunlit, warm, and high-clarity",
+  "viewpoint": "low-angle upward perspective",
+  "layout_archetype": "diagonal ascent path spanning full width",
+  "complexity_level": "high detail layered world",
+  "palette_notes": "Orange motion cues with charcoal structure and warm neutral atmosphere",
+  "prompt_notes": [
+    "Use strong horizontal continuity while preserving diagonal upward momentum.",
+    "Include repeated forms that imply compounding progress.",
+    "Prefer textured editorial illustration over literal realism.",
+    "Keep emotional tone hopeful and determined."
+  ],
+  "avoid": [
+    "gloomy shadows that overpower highlights",
+    "flat one-layer composition",
+    "cartoonish character treatment"
+  ],
+  "aspirational_growth_rationale": "Conveys that professional advancement is earned step by step, with visible progress and expanding horizons."
+}

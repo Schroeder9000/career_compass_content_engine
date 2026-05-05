@@ -1,0 +1,23 @@
+{
+  "image_file": "career_compass_lost_in_the_maze.png",
+  "title": "Lost In The Maze",
+  "theme": "navigating ambiguity and complexity at work",
+  "visual_metaphor": "maze transforming into a readable path",
+  "lighting_direction": "balanced bright treatment with emerging warm highlights",
+  "viewpoint": "bird's-eye map-like perspective",
+  "layout_archetype": "multi-node narrative with route progression",
+  "complexity_level": "high detail layered world",
+  "palette_notes": "Orange wayfinding signals within charcoal and warm gray structure",
+  "prompt_notes": [
+    "Spread maze and path logic across all three horizontal zones.",
+    "Show movement from confusion toward directional clarity.",
+    "Use clear visual hierarchy so complexity remains readable.",
+    "Maintain aspirational tone even when showing challenge."
+  ],
+  "avoid": [
+    "claustrophobic darkness",
+    "random visual noise without hierarchy",
+    "literal office-cubicle maze depiction"
+  ],
+  "aspirational_growth_rationale": "Shows that difficult career environments can be decoded into strategic next moves."
+}

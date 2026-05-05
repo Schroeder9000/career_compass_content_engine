@@ -1,0 +1,23 @@
+{
+  "image_file": "career_compass_facing_the_sun.png",
+  "title": "Facing The Sun",
+  "theme": "confidence, visibility, and future orientation",
+  "visual_metaphor": "turning toward a bright source of opportunity",
+  "lighting_direction": "strongly bright and optimistic with warm sunrise treatment",
+  "viewpoint": "eye-level with long-range horizon",
+  "layout_archetype": "horizon-led panoramic spread",
+  "complexity_level": "minimal symbolic",
+  "palette_notes": "Warm orange focal glow balanced by restrained charcoal and stone tones",
+  "prompt_notes": [
+    "Build a panoramic horizon that carries the eye from left to right.",
+    "Use open space intentionally but keep full-bleed edge-to-edge coverage.",
+    "Emphasize directionality and emotional lift.",
+    "Keep symbolism elegant and not literal."
+  ],
+  "avoid": [
+    "stormy, oppressive atmosphere",
+    "centered emblem floating in empty frame",
+    "neon palettes"
+  ],
+  "aspirational_growth_rationale": "Frames growth as stepping into clarity and possibility instead of staying in defensive mode."
+}
