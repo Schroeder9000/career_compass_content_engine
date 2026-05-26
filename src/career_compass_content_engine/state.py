@@ -23,6 +23,8 @@ class ContentState(TypedDict, total=False):
     research_payload: Dict[str, Any]   # Full JSON from ResearchAgent
     text_context: str                  # RAG text snippets for WritingAgent
     image_context: str                 # RAG image examples for ImageAgent
+    recent_image_history: list[Dict[str, Any]]  # Rolling window of prior image diversity tags
+    image_retrieval_sources: list[str]  # Sources used to build image_context
 
     # ── Content creation loop ──────────────────────────────────────────────────
     blog_draft: str         # Raw draft from WritingAgent
@@ -41,6 +43,8 @@ class ContentState(TypedDict, total=False):
     # which waits for both to complete before executing. This guarantees
     # image_file_path is always set in shared state before node_publish reads it.
     image_plan: Dict[str, Any]           # Prompt, alt_text, palette, aspect_ratio
+    image_diversity_score: float         # 0-1 novelty score vs recent_image_history
+    image_diversity_feedback: list[str]  # Diversity diagnostics for logging/QA
     image_file_path: Optional[str]       # Local path to generated image (or None)
     image_generation_error: Optional[str]  # Error message if generation failed, else None
 

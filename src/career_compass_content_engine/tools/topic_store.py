@@ -69,6 +69,8 @@ class TopicStore:
         revision_count: int,
         evaluation_passed: bool,
         webflow_item_id: Optional[str] = None,
+        image_diversity: Optional[Dict[str, Any]] = None,
+        image_inspiration_sources: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Append a completed run record and persist to disk."""
         now = datetime.now()
@@ -83,10 +85,35 @@ class TopicStore:
             "revision_count": revision_count,
             "evaluation_passed": evaluation_passed,
         }
+        if image_diversity:
+            record["image_diversity"] = image_diversity
+        if image_inspiration_sources:
+            record["image_inspiration_sources"] = image_inspiration_sources
         records = self._load()
         records.append(record)
         self._save(records)
         return record
+
+    def recent_image_history(self, limit: int = 8) -> List[Dict[str, Any]]:
+        """Return recent runs that contain image diversity metadata (newest first)."""
+        records = list(reversed(self._load()))
+        out: List[Dict[str, Any]] = []
+        for r in records:
+            diversity = r.get("image_diversity")
+            if not isinstance(diversity, dict) or not diversity:
+                continue
+            out.append(
+                {
+                    "timestamp": r.get("timestamp", ""),
+                    "topic": r.get("topic", ""),
+                    "suggested_title": r.get("suggested_title", ""),
+                    "image_diversity": diversity,
+                    "image_inspiration_sources": r.get("image_inspiration_sources", []),
+                }
+            )
+            if len(out) >= limit:
+                break
+        return out
 
     def all_records(self) -> List[Dict[str, Any]]:
         """Return all records, newest first."""

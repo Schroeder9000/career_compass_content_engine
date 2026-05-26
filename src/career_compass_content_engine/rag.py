@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -126,9 +126,35 @@ class RAGPipeline:
         """Retrieve text examples for writing and editing."""
         return self.text_vectorstore.similarity_search(query, k=k)
 
-    def retrieve_images(self, query: str, k: int = 4) -> List[Document]:
-        """Retrieve image examples for visual design."""
-        return self.image_vectorstore.similarity_search(query, k=k)
+    def retrieve_images(
+        self,
+        query: str,
+        k: int = 4,
+        avoid_patterns: Optional[Sequence[str]] = None,
+        fetch_k: int = 12,
+    ) -> List[Document]:
+        """Retrieve image examples for visual design with optional anti-repetition reranking."""
+        patterns = [
+            p.strip().lower()
+            for p in (avoid_patterns or [])
+            if isinstance(p, str) and p.strip()
+        ]
+        if not patterns:
+            return self.image_vectorstore.similarity_search(query, k=k)
+
+        candidates: List[Tuple[Document, float]] = self.image_vectorstore.similarity_search_with_score(
+            query,
+            k=max(k, fetch_k),
+        )
+        if not candidates:
+            return []
+
+        def diversity_penalty(doc: Document) -> int:
+            text = (doc.page_content or "").lower()
+            return sum(1 for pattern in patterns if pattern in text)
+
+        ranked = sorted(candidates, key=lambda pair: (diversity_penalty(pair[0]), pair[1]))
+        return [doc for doc, _score in ranked[:k]]
 
     def as_text_context(self, query: str, k: int = 4) -> str:
         """Get text examples as context string for writing/editing agents."""
@@ -137,12 +163,35 @@ class RAGPipeline:
             return ""
         return "\n\n".join(doc.page_content for doc in results)
 
-    def as_image_context(self, query: str, k: int = 4) -> str:
+    def as_image_context(
+        self,
+        query: str,
+        k: int = 4,
+        avoid_patterns: Optional[Sequence[str]] = None,
+    ) -> str:
         """Get image examples as context string for image agent."""
-        results = self.retrieve_images(query, k=k)
+        results = self.retrieve_images(query, k=k, avoid_patterns=avoid_patterns)
         if not results:
             return ""
         return "\n\n".join(doc.page_content for doc in results)
+
+    def as_image_context_with_sources(
+        self,
+        query: str,
+        k: int = 4,
+        avoid_patterns: Optional[Sequence[str]] = None,
+    ) -> Tuple[str, List[str]]:
+        """Return image context and contributing source paths in a single retrieval call."""
+        results = self.retrieve_images(query, k=k, avoid_patterns=avoid_patterns)
+        if not results:
+            return "", []
+        context = "\n\n".join(doc.page_content for doc in results)
+        sources = [
+            str(doc.metadata.get("source", ""))
+            for doc in results
+            if isinstance(doc.metadata, dict) and doc.metadata.get("source")
+        ]
+        return context, sources
 
 def _load_documents(directories: Iterable[Path]) -> List[Document]:
     documents: List[Document] = []

@@ -113,6 +113,11 @@ Framing:
 (Use as directional references only. Do not copy literally.)
 {examples}
 
+### RECENT IMAGE HISTORY (DO NOT REPEAT)
+{recent_history}
+
+If recent history is provided, you must choose a clearly different composition/profile combination.
+
 ---
 
 ### OUTPUT FORMAT
@@ -128,7 +133,7 @@ Return a strict JSON object with these keys:
 - suggested_palette: List of 3-5 hex color codes aligned with brand anchors
 - aspect_ratio: "16:9"
 - guidance_on_model_settings: Brief notes (for example: abstraction level, style strength)
-- diversity_tags: Object with keys viewpoint, composition_archetype, complexity_level, lighting_style
+- diversity_tags: Object with keys viewpoint, composition_archetype, complexity_level, lighting_style, shot_distance, camera_angle, focal_strategy
 
 Do not include any text outside the JSON object.
 """
@@ -140,12 +145,19 @@ class ImageAgent(BaseAgent):
 
     llm: BaseChatModel
 
-    def design(self, topic_payload: Dict[str, str], rag_context: str, context: AgentContext) -> AgentResult:
+    def design(
+        self,
+        topic_payload: Dict[str, str],
+        rag_context: str,
+        context: AgentContext,
+        recent_history_context: str = "",
+    ) -> AgentResult:
         prompt = IMAGE_TEMPLATE.format(
             topic=topic_payload.get("topic", ""),
             summary=topic_payload.get("summary", topic_payload.get("rationale", "")),
             key_idea=topic_payload.get("key_idea", topic_payload.get("idea", "")),
             examples=rag_context or "(No visual examples provided; follow brand colors.)",
+            recent_history=recent_history_context or "(No prior image history available.)",
         )
         # Run the LLM and expect JSON output. Parse and validate keys.
         # Use llm.invoke directly to access raw model output objects when available.

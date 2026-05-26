@@ -62,6 +62,7 @@ logger = logging.getLogger(__name__)
 # ── Pipeline constants (single source of truth) ───────────────────────────────
 MAX_REVISIONS: int = 3        # Max evaluation cycles before forcing publish
 SCORE_THRESHOLD: float = 8.5  # Average score (0–10) required to pass without revision
+IMAGE_HISTORY_WINDOW: int = 8
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -133,6 +134,128 @@ def _aspect_ratio_to_size(image_plan: Dict[str, Any]) -> str:
         "4:3": "1536x1024",  "4x3": "1536x1024",
         "1:1": "1024x1024",  "1x1": "1024x1024",
     }.get(ar, "1024x1024")
+
+
+def _extract_diversity_tags(image_plan: Dict[str, Any]) -> Dict[str, str]:
+    """Normalize diversity tags from the image plan payload."""
+    raw = image_plan.get("diversity_tags", {}) if isinstance(image_plan, dict) else {}
+    if not isinstance(raw, dict):
+        return {}
+    keys = (
+        "viewpoint",
+        "composition_archetype",
+        "complexity_level",
+        "lighting_style",
+        "shot_distance",
+        "camera_angle",
+        "focal_strategy",
+    )
+    return {
+        key: str(raw.get(key, "")).strip()
+        for key in keys
+        if str(raw.get(key, "")).strip()
+    }
+
+
+def _build_recent_diversity_summary(history: list[Dict[str, Any]]) -> str:
+    """Build compact anti-repetition context for the image prompt."""
+    if not history:
+        return "(No recent image history available.)"
+    lines = ["Most recent image profiles (newest first):"]
+    for idx, item in enumerate(history[:IMAGE_HISTORY_WINDOW], 1):
+        tags = item.get("image_diversity", {})
+        if not isinstance(tags, dict):
+            continue
+        lines.append(
+            f"{idx}. viewpoint={tags.get('viewpoint', '?')}; "
+            f"composition={tags.get('composition_archetype', '?')}; "
+            f"distance={tags.get('shot_distance', '?')}; "
+            f"angle={tags.get('camera_angle', '?')}; "
+            f"complexity={tags.get('complexity_level', '?')}; "
+            f"lighting={tags.get('lighting_style', '?')}"
+        )
+    return "\n".join(lines)
+
+
+def _build_diversity_avoid_patterns(history: list[Dict[str, Any]]) -> list[str]:
+    """Build simple lexical avoid-pattern list from recent history tags."""
+    patterns: list[str] = []
+    for item in history[:IMAGE_HISTORY_WINDOW]:
+        tags = item.get("image_diversity", {})
+        if not isinstance(tags, dict):
+            continue
+        for key in (
+            "composition_archetype",
+            "viewpoint",
+            "shot_distance",
+            "camera_angle",
+            "focal_strategy",
+        ):
+            value = str(tags.get(key, "")).strip().lower()
+            if value:
+                patterns.append(value)
+    # Keep order stable while removing duplicates.
+    return list(dict.fromkeys(patterns))
+
+
+def _score_image_diversity(
+    current_tags: Dict[str, str],
+    history: list[Dict[str, Any]],
+) -> tuple[float, list[str]]:
+    """Return novelty score (0-1) and diagnostics against recent history."""
+    if not current_tags or not history:
+        return 1.0, ["No recent image history to compare; treating as fully novel."]
+
+    diagnostics: list[str] = []
+    penalty = 0.0
+    recent = history[:IMAGE_HISTORY_WINDOW]
+    recent_tags = [h.get("image_diversity", {}) for h in recent if isinstance(h.get("image_diversity", {}), dict)]
+
+    # Penalize repeating any axis from the immediate previous generation.
+    previous = recent_tags[0] if recent_tags else {}
+    for axis, value in current_tags.items():
+        if not value:
+            continue
+        if str(previous.get(axis, "")).strip().lower() == value.strip().lower():
+            penalty += 0.10
+            diagnostics.append(f"Immediate repeat on axis '{axis}': {value}")
+
+    # Penalize frequent repetition over recent window.
+    for axis, value in current_tags.items():
+        if not value:
+            continue
+        repeats = sum(
+            1
+            for tags in recent_tags
+            if str(tags.get(axis, "")).strip().lower() == value.strip().lower()
+        )
+        reuse_rate = repeats / max(len(recent_tags), 1)
+        if reuse_rate >= 0.5:
+            penalty += 0.08
+            diagnostics.append(f"High reuse on axis '{axis}' ({repeats}/{len(recent_tags)} recent runs)")
+
+    # Strong penalty for repeating the same composition-distance-angle combo in last 3.
+    combo = (
+        current_tags.get("composition_archetype", "").strip().lower(),
+        current_tags.get("shot_distance", "").strip().lower(),
+        current_tags.get("camera_angle", "").strip().lower(),
+    )
+    if all(combo):
+        for tags in recent_tags[:3]:
+            prev_combo = (
+                str(tags.get("composition_archetype", "")).strip().lower(),
+                str(tags.get("shot_distance", "")).strip().lower(),
+                str(tags.get("camera_angle", "")).strip().lower(),
+            )
+            if combo == prev_combo:
+                penalty += 0.35
+                diagnostics.append("Critical repeat: composition+distance+angle matches recent output")
+                break
+
+    score = max(0.0, min(1.0, 1.0 - penalty))
+    if not diagnostics:
+        diagnostics.append("Good novelty against recent image history.")
+    return score, diagnostics
 
 
 def _has_substantive_closing(markdown: str) -> bool:
@@ -384,12 +507,28 @@ def build_graph(
         research_payload = _safe_parse(result.raw_response)
         logger.debug("[research] raw response snippet: %.300s", result.raw_response)
         topic = research_payload.get("topic", "Career Compass")
+
+        recent_image_history = topic_store.recent_image_history(limit=IMAGE_HISTORY_WINDOW)
+        avoid_patterns = _build_diversity_avoid_patterns(recent_image_history)
+        image_context, image_sources = rag.as_image_context_with_sources(
+            query=topic,
+            avoid_patterns=avoid_patterns,
+        )
+        logger.info(
+            "🧭 [research] image diversity context — recent history: %d  avoid patterns: %d  selected sources: %d",
+            len(recent_image_history),
+            len(avoid_patterns),
+            len(image_sources),
+        )
+
         logger.info("📋 [research] topic: %s", research_payload.get("suggested_title", topic))
         logger.info("✅ [research] done")
         return {
             "research_payload": research_payload,
             "text_context": rag.as_text_context(query=topic),
-            "image_context": rag.as_image_context(query=topic),
+            "image_context": image_context,
+            "recent_image_history": recent_image_history,
+            "image_retrieval_sources": image_sources,
         }
 
     async def node_write(state: ContentState) -> dict:
@@ -418,6 +557,7 @@ def build_graph(
                 state["research_payload"],
                 state["image_context"],
                 state["context"],
+                recent_history_context=_build_recent_diversity_summary(state.get("recent_image_history", [])),
             )
         )
         logger.debug("[image_design] raw response snippet: %.300s", result.raw_response)
@@ -426,9 +566,21 @@ def build_graph(
             image_plan: Dict[str, Any] = {}
         else:
             image_plan = _safe_parse(result.raw_response)
+        diversity_tags = _extract_diversity_tags(image_plan)
+        diversity_score, diversity_feedback = _score_image_diversity(
+            diversity_tags,
+            state.get("recent_image_history", []),
+        )
+        logger.info("🧪 [image_design] diversity score: %.2f", diversity_score)
+        for message in diversity_feedback[:3]:
+            logger.info("🧪 [image_design] %s", message)
         logger.info("📸 [image_design] plan generated: %s", bool(image_plan.get("prompt")))
         logger.info("✅ [image_design] done")
-        return {"image_plan": image_plan}
+        return {
+            "image_plan": image_plan,
+            "image_diversity_score": diversity_score,
+            "image_diversity_feedback": diversity_feedback,
+        }
 
     async def node_image_generate(state: ContentState) -> dict:
         logger.info("🔵 [image_generate] starting...")
@@ -571,6 +723,7 @@ def build_graph(
         image_path = state.get("image_file_path")
         if image_path:
             logger.info("🖼️  [publish] image available: %s", image_path)
+            logger.info("🧭 [publish] image diversity score: %.2f", state.get("image_diversity_score", 0.0))
         else:
             image_err = state.get("image_generation_error")
             if image_err:
@@ -605,6 +758,8 @@ def build_graph(
                 revision_count=state.get("revision_count", 0),
                 evaluation_passed=state.get("evaluation_passed", False),
                 webflow_item_id=webflow_item_id,
+                image_diversity=_extract_diversity_tags(state.get("image_plan", {})),
+                image_inspiration_sources=state.get("image_retrieval_sources", []),
             )
             logger.info("💾 [publish] run recorded to topic history")
         except Exception as exc:
