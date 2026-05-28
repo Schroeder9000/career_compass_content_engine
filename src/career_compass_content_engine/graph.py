@@ -94,33 +94,96 @@ async def _run_sync(fn: Callable[[], Any]) -> Any:
 
 
 def _augment_image_prompt(image_plan: Dict[str, Any]) -> str:
-    """Append spatial/composition instructions to the raw image prompt."""
+    """Append guardrails while preserving diversity chosen by the image plan."""
     prompt_text = image_plan.get("prompt", "")
-    if image_plan.get("aspect_ratio"):
-        return (
-            f"WIDE CINEMATIC PANORAMA in {image_plan.get('aspect_ratio')} format. "
-            "COMPOSITION STRUCTURE: Divide the canvas into THREE ZONES - "
-            "LEFT THIRD has visual elements, CENTER THIRD has visual elements, "
-            "RIGHT THIRD has visual elements. "
-            "Elements flow and connect across all three zones creating a continuous "
-            "horizontal narrative with asymmetrical balance and varied depth. "
-            f"{prompt_text} "
-            "LIGHTING REQUIREMENT: Brighter, optimistic scene with warm highlights, "
-            "open midtones, and controlled shadows; avoid gloomy low-key darkness. "
-            "DIVERSITY REQUIREMENT: Favor non-repetitive viewpoint and composition "
-            "choices; do not default to a centered focal subject. "
-            "CRITICAL SPATIAL REQUIREMENTS: Visual elements must extend from the "
-            "FAR LEFT EDGE all the way to the FAR RIGHT EDGE. "
-            "Use repeating patterns, flowing lines, or distributed subjects that span "
-            "the FULL HORIZONTAL WIDTH. "
-            "Think ULTRA-WIDE landscape photography or cinema aspect ratio - "
-            "NEVER a centered square subject with empty sides."
+    aspect_ratio = image_plan.get("aspect_ratio")
+    diversity_tags = _extract_diversity_tags(image_plan)
+
+    constraints = [
+        "Generate a full-bleed edge-to-edge hero illustration.",
+        "Use bright, optimistic lighting with warm highlights and open midtones.",
+        "Avoid gloomy low-key darkness and avoid default centered poster layouts.",
+    ]
+    if aspect_ratio:
+        constraints.insert(0, f"Respect {aspect_ratio} aspect ratio.")
+    if diversity_tags:
+        constraints.append(
+            "Preserve the requested diversity profile exactly: "
+            + "; ".join(f"{k}={v}" for k, v in diversity_tags.items())
+            + "."
         )
+    return f"{prompt_text}\n\nAdditional constraints:\n- " + "\n- ".join(constraints)
+
+
+def _build_diversity_target(history: list[Dict[str, Any]], topic_seed: str) -> Dict[str, str]:
+    """Pick a deterministic diversity profile to rotate across runs."""
+    profiles = [
+        {
+            "viewpoint": "bird's-eye",
+            "composition_archetype": "distributed constellation",
+            "complexity_level": "high-detail layered",
+            "lighting_style": "warm daylight optimism",
+            "shot_distance": "wide environmental",
+            "camera_angle": "top-oblique",
+            "focal_strategy": "multi-node narrative",
+            "orientation_treatment": "left-to-right progression",
+        },
+        {
+            "viewpoint": "eye-level",
+            "composition_archetype": "branching crossroads",
+            "complexity_level": "medium narrative",
+            "lighting_style": "clear noon contrast",
+            "shot_distance": "mid scene",
+            "camera_angle": "straight-on",
+            "focal_strategy": "foreground-to-background journey",
+            "orientation_treatment": "center-offset momentum",
+        },
+        {
+            "viewpoint": "low-angle",
+            "composition_archetype": "diagonal ascent",
+            "complexity_level": "minimal symbolic",
+            "lighting_style": "golden-hour directional glow",
+            "shot_distance": "close to medium",
+            "camera_angle": "low tilt-up",
+            "focal_strategy": "single dominant motif",
+            "orientation_treatment": "right-to-left tension-to-release",
+        },
+        {
+            "viewpoint": "isometric/sectional",
+            "composition_archetype": "layered skyline",
+            "complexity_level": "high-detail layered",
+            "lighting_style": "crisp ambient light",
+            "shot_distance": "wide systemic",
+            "camera_angle": "sectional cutaway",
+            "focal_strategy": "asymmetrical balance",
+            "orientation_treatment": "tri-zone rhythm",
+        },
+    ]
+
+    offset = (len(history) + sum(ord(ch) for ch in (topic_seed or ""))) % len(profiles)
+    target = dict(profiles[offset])
+
+    if history:
+        last = history[0].get("image_diversity", {})
+        if isinstance(last, dict):
+            # Avoid immediate axis repeats by stepping one profile if too similar.
+            shared_axes = sum(
+                1
+                for axis in ("viewpoint", "composition_archetype", "shot_distance", "camera_angle")
+                if str(last.get(axis, "")).strip().lower() == str(target.get(axis, "")).strip().lower()
+            )
+            if shared_axes >= 2:
+                target = dict(profiles[(offset + 1) % len(profiles)])
+
+    return target
+
+
+def _format_diversity_target(target: Dict[str, str]) -> str:
+    if not target:
+        return "(No diversity target available.)"
     return (
-        f"FULL-FRAME COMPOSITION: {prompt_text} "
-        "CRITICAL: Create a full-frame composition that fills the entire canvas "
-        "edge-to-edge with no borders, padding, or empty space around the illustration. "
-        "Use brighter, optimistic lighting and avoid heavy-shadow, gloomy outputs."
+        "Required diversity profile for this run:\n"
+        + "\n".join(f"- {key}: {value}" for key, value in target.items())
     )
 
 
@@ -509,6 +572,10 @@ def build_graph(
         topic = research_payload.get("topic", "Career Compass")
 
         recent_image_history = topic_store.recent_image_history(limit=IMAGE_HISTORY_WINDOW)
+        diversity_target = _build_diversity_target(
+            recent_image_history,
+            research_payload.get("topic", "") or research_payload.get("suggested_title", ""),
+        )
         avoid_patterns = _build_diversity_avoid_patterns(recent_image_history)
         image_context, image_sources = rag.as_image_context_with_sources(
             query=topic,
@@ -528,6 +595,7 @@ def build_graph(
             "text_context": rag.as_text_context(query=topic),
             "image_context": image_context,
             "recent_image_history": recent_image_history,
+            "image_diversity_target": diversity_target,
             "image_retrieval_sources": image_sources,
         }
 
@@ -558,6 +626,7 @@ def build_graph(
                 state["image_context"],
                 state["context"],
                 recent_history_context=_build_recent_diversity_summary(state.get("recent_image_history", [])),
+                diversity_target_context=_format_diversity_target(state.get("image_diversity_target", {})),
             )
         )
         logger.debug("[image_design] raw response snippet: %.300s", result.raw_response)

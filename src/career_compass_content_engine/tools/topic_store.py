@@ -26,19 +26,24 @@ File schema (JSON array of objects):
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-_DEFAULT_PATH = Path(".cache/topic_history.json")
+def _resolve_default_path() -> Path:
+    configured = (os.getenv("TOPIC_HISTORY_PATH") or "").strip()
+    if configured:
+        return Path(configured)
+    return Path(".cache/topic_history.json")
 
 
 class TopicStore:
     """Read/write interface for the run history JSON log."""
 
-    def __init__(self, path: Path = _DEFAULT_PATH) -> None:
-        self.path = path
+    def __init__(self, path: Optional[Path] = None) -> None:
+        self.path = path or _resolve_default_path()
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     # ── I/O helpers ──────────────────────────────────────────────────────────

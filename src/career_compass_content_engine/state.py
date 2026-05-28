@@ -24,6 +24,7 @@ class ContentState(TypedDict, total=False):
     text_context: str                  # RAG text snippets for WritingAgent
     image_context: str                 # RAG image examples for ImageAgent
     recent_image_history: list[Dict[str, Any]]  # Rolling window of prior image diversity tags
+    image_diversity_target: Dict[str, str]  # Deterministic profile to rotate composition/viewpoint
     image_retrieval_sources: list[str]  # Sources used to build image_context
 
     # ── Content creation loop ──────────────────────────────────────────────────

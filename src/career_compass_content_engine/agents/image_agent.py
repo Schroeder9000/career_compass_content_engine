@@ -54,8 +54,7 @@ Allowed aesthetic range (rotate to avoid repetition):
 
 Hard constraints:
 - CRITICAL: The final composition must be full-bleed 16:9 landscape.
-- Elements must span from far left edge to far right edge.
-- No borders, padding, empty side margins, or centered square poster layouts.
+- No borders, padding, or letterboxing.
 - Keep abstract human or symbolic forms; avoid detailed faces.
 - Avoid photorealism and stock-photo feel.
 
@@ -88,7 +87,7 @@ Vary complexity level:
 - Minimal symbolic, medium narrative, high-detail layered world.
 
 Vary orientation treatment inside 16:9:
-- Left-to-right progression, right-to-left tension-to-release, center-offset momentum, tri-zone rhythm.
+- Left-to-right progression, right-to-left tension-to-release, center-offset momentum, tri-zone rhythm, radial spread.
 
 Anti-repetition rules:
 - Do not reuse the same central metaphor in consecutive runs.
@@ -102,10 +101,9 @@ Aspect ratio:
 16:9 (blog hero image)
 
 Framing:
-- Describe the LEFT, CENTER, and RIGHT zones explicitly.
-- Ensure visual continuity across all three zones.
-- Use horizontal devices: pathways, repeating forms, horizons, or linked motifs.
-- The visual narrative must move across the full width of the frame.
+- Do not force the same grid each run.
+- You may use zone-based, radial, diagonal, layered-depth, or asymmetric structures.
+- Keep the scene edge-to-edge and readable at mobile thumbnail size.
 
 ---
 
@@ -118,17 +116,21 @@ Framing:
 
 If recent history is provided, you must choose a clearly different composition/profile combination.
 
+### REQUIRED DIVERSITY PROFILE FOR THIS RUN
+{diversity_target}
+
+Treat this profile as mandatory unless it conflicts with 16:9 full-bleed constraints.
+
 ---
 
 ### OUTPUT FORMAT
 Return a strict JSON object with these keys:
 
 - prompt: A detailed, high-quality image-generation prompt. It must:
-    * Start by stating this is a wide 16:9 panoramic composition.
-    * Describe LEFT/CENTER/RIGHT zones with explicit spatial language.
-    * Explicitly state that elements span from far left edge to far right edge.
+    * Start by stating this is a full-bleed 16:9 hero illustration.
+    * Explicitly encode the required diversity profile in concrete visual language.
     * Include bright, optimistic lighting guidance.
-    * End with: "Full-bleed panoramic composition filling the entire 16:9 canvas."
+    * End with: "Full-bleed composition filling the entire 16:9 canvas."
 - alt_text: Accessible, descriptive alt text (<= 140 characters)
 - suggested_palette: List of 3-5 hex color codes aligned with brand anchors
 - aspect_ratio: "16:9"
@@ -151,6 +153,7 @@ class ImageAgent(BaseAgent):
         rag_context: str,
         context: AgentContext,
         recent_history_context: str = "",
+        diversity_target_context: str = "",
     ) -> AgentResult:
         prompt = IMAGE_TEMPLATE.format(
             topic=topic_payload.get("topic", ""),
@@ -158,6 +161,7 @@ class ImageAgent(BaseAgent):
             key_idea=topic_payload.get("key_idea", topic_payload.get("idea", "")),
             examples=rag_context or "(No visual examples provided; follow brand colors.)",
             recent_history=recent_history_context or "(No prior image history available.)",
+            diversity_target=diversity_target_context or "(No enforced diversity target provided.)",
         )
         # Run the LLM and expect JSON output. Parse and validate keys.
         # Use llm.invoke directly to access raw model output objects when available.

@@ -18,6 +18,7 @@ image = (
 )
 
 app = modal.App("career-compass-content-engine", image=image)
+cache_volume = modal.Volume.from_name("career-compass-content-cache", create_if_missing=True)
 
 _secrets = [modal.Secret.from_name("careeer_compass_langchain_content_engine")]
 
@@ -113,10 +114,14 @@ def _notify(subject: str, body: str, ok: bool) -> None:
 @app.function(
     schedule=modal.Cron("0 7 * * 1-5", timezone="America/New_York"),
     secrets=_secrets,
+    volumes={"/app/.cache": cache_volume},
     timeout=900,
 )
 def run_weekday_workflow():
     from career_compass_content_engine.run_new_blog_workflow import main
+
+    # Ensure run-history and artifacts survive across scheduled container runs.
+    os.environ.setdefault("TOPIC_HISTORY_PATH", "/app/.cache/topic_history.json")
 
     started_at = datetime.now(timezone.utc)
     try:
