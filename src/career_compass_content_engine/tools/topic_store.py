@@ -17,7 +17,10 @@ File schema (JSON array of objects):
             "webflow_item_id": "abc123",
             "final_score": 8.7,
             "revision_count": 1,
-            "evaluation_passed": true
+            "evaluation_passed": true,
+            "publish_status": "success",
+            "image_attached": true,
+            "publish_error": null
         },
         ...
     ]
@@ -76,6 +79,9 @@ class TopicStore:
         webflow_item_id: Optional[str] = None,
         image_diversity: Optional[Dict[str, Any]] = None,
         image_inspiration_sources: Optional[List[str]] = None,
+        publish_status: Optional[str] = None,
+        image_attached: Optional[bool] = None,
+        publish_error: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Append a completed run record and persist to disk."""
         now = datetime.now()
@@ -94,6 +100,12 @@ class TopicStore:
             record["image_diversity"] = image_diversity
         if image_inspiration_sources:
             record["image_inspiration_sources"] = image_inspiration_sources
+        if publish_status:
+            record["publish_status"] = publish_status
+        if image_attached is not None:
+            record["image_attached"] = image_attached
+        if publish_error:
+            record["publish_error"] = publish_error
         records = self._load()
         records.append(record)
         self._save(records)

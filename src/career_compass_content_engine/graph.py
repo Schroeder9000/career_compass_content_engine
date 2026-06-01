@@ -661,25 +661,39 @@ def build_graph(
         size = _aspect_ratio_to_size(image_plan)
         logger.info("📐 [image_generate] size: %s", size)
         image_file_path: Optional[str] = None
-        try:
-            gen = ImageGenerator()
-            gen.openai_api_key = settings.openai_api_key
-            # Honour the model configured in Settings (env override still respected
-            # inside _resolve_image_model, but Settings is the canonical source).
-            if settings.openai_image_model:
-                import os as _os
-                _os.environ.setdefault("OPENAI_IMAGE_MODEL", settings.openai_image_model)
-            img_path = await _run_sync(lambda: gen.generate(prompt_text, size=size))
-            # Sanity-check: reject suspiciously small files (e.g. 1x1 pixel fallbacks)
-            if img_path.stat().st_size < 1024:
-                raise RuntimeError(
-                    f"Generated image is only {img_path.stat().st_size} bytes — treating as failed generation"
-                )
-            image_file_path = str(img_path)
-            logger.info("✅ [image_generate] done")
-        except Exception as exc:
-            logger.warning("⚠️  [image_generate] failed: %s", exc)
-            return {"image_file_path": None, "image_generation_error": str(exc)}
+        gen = ImageGenerator()
+        gen.openai_api_key = settings.openai_api_key
+        # Honour the model configured in Settings (env override still respected
+        # inside _resolve_image_model, but Settings is the canonical source).
+        if settings.openai_image_model:
+            import os as _os
+            _os.environ.setdefault("OPENAI_IMAGE_MODEL", settings.openai_image_model)
+
+        attempted_sizes = [size]
+        if size != "1024x1024":
+            # Fallback pass for transient model/size issues.
+            attempted_sizes.append("1024x1024")
+
+        last_error: Optional[str] = None
+        for attempt_idx, attempt_size in enumerate(attempted_sizes, 1):
+            try:
+                logger.info("🧪 [image_generate] attempt %d/%d with size %s", attempt_idx, len(attempted_sizes), attempt_size)
+                img_path = await _run_sync(lambda: gen.generate(prompt_text, size=attempt_size))
+                # Sanity-check: reject suspiciously small files (e.g. 1x1 pixel fallbacks)
+                if img_path.stat().st_size < 1024:
+                    raise RuntimeError(
+                        f"Generated image is only {img_path.stat().st_size} bytes — treating as failed generation"
+                    )
+                image_file_path = str(img_path)
+                break
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning("⚠️  [image_generate] attempt %d failed: %s", attempt_idx, exc)
+
+        if not image_file_path:
+            return {"image_file_path": None, "image_generation_error": last_error or "image generation failed"}
+
+        logger.info("✅ [image_generate] done")
         return {"image_file_path": image_file_path, "image_generation_error": None}
 
     async def node_edit(state: ContentState) -> dict:
@@ -809,6 +823,7 @@ def build_graph(
         result["image_attached"] = bool(image_path) and result.get("status") not in ("skipped", "error")
         status = result.get("status", "unknown")
         logger.info("✅ [publish] done — status: %s  image_attached: %s", status, result["image_attached"])
+        publish_error = result.get("reason") or (result.get("webflow_publish") or {}).get("error")
 
         # Record this run in the persistent topic history
         research_payload = state.get("research_payload", {})
@@ -829,10 +844,16 @@ def build_graph(
                 webflow_item_id=webflow_item_id,
                 image_diversity=_extract_diversity_tags(state.get("image_plan", {})),
                 image_inspiration_sources=state.get("image_retrieval_sources", []),
+                publish_status=str(status),
+                image_attached=bool(result.get("image_attached", False)),
+                publish_error=str(publish_error) if publish_error else None,
             )
             logger.info("💾 [publish] run recorded to topic history")
         except Exception as exc:
             logger.warning("⚠️  [publish] topic history write failed: %s", exc)
+
+        if status == "error":
+            raise RuntimeError(str(publish_error or "Webflow publish failed"))
 
         return {"publish_result": result}
 

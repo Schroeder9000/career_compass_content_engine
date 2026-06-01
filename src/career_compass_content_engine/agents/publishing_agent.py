@@ -428,6 +428,13 @@ class PublishingAgent(BaseAgent):
 
         cms = WebflowCMS(self.settings.webflow_api_token)
 
+        # Discover collection field slugs and requirements early so we can
+        # decide whether publishing without an image is allowed.
+        try:
+            col_fields = cms.get_collection_fields(self.settings.webflow_collection_id)
+        except Exception:
+            col_fields = []
+
         hosted_image_url = image_url
         if not hosted_image_url and image_file_path:
             path = Path(image_file_path)
@@ -438,9 +445,7 @@ class PublishingAgent(BaseAgent):
                     return {"status": "error", "reason": f"Asset upload failed: {exc}"}
 
         if not hosted_image_url:
-            logger.warning(
-                "[PublishingAgent] No image available — publishing CMS item without featured image."
-            )
+            logger.warning("[PublishingAgent] No image available from generator/uploader.")
 
         # Derive title: prefer metadata, then suggested_title, then H1 from the markdown, else fallback
         title = metadata.get("title") or metadata.get("suggested_title") or None
@@ -467,12 +472,6 @@ class PublishingAgent(BaseAgent):
             else:
                 title = "Career Compass Blog"
         author_id = self.settings.webflow_author_id
-
-        # Discover collection field slugs so we send the correct field names.
-        try:
-            col_fields = cms.get_collection_fields(self.settings.webflow_collection_id)
-        except Exception:
-            col_fields = []
 
         # helpers to pick slugs
         def first_slug_by_type(t):
@@ -542,6 +541,22 @@ class PublishingAgent(BaseAgent):
             field_slug_thumb_image = image_slugs[1] if len(image_slugs) > 1 else (
                 image_slugs[0] if image_slugs else field_slug_thumb_image
             )
+
+        required_image_slugs = [
+            f.get("slug")
+            for f in col_fields
+            if (f.get("type") or "").lower() == "image" and bool(f.get("isRequired"))
+        ]
+        if required_image_slugs and not hosted_image_url:
+            return {
+                "status": "error",
+                "reason": (
+                    "Collection requires image fields but no image was generated/uploaded: "
+                    + ", ".join(s for s in required_image_slugs if s)
+                ),
+                "required_image_fields": required_image_slugs,
+            }
+
         field_slug_description = first_plaintext_slug(
             exclude=(field_slug_title, field_slug_slug, *reserved_plaintext_slugs)
         ) or field_slug_description
@@ -770,16 +785,17 @@ class PublishingAgent(BaseAgent):
             }
 
         publish_response: Dict[str, Any] = {}
+        publish_error: Optional[str] = None
         try:
             publish_response = cms.publish_items(self.settings.webflow_collection_id, [created_item_id])
         except Exception as exc:  # pragma: no cover - network call
-            # Publish validation errors often mean a required collection field (e.g. image) is
-            # missing.  The item already exists as a draft — log the failure and continue so
-            # the caller receives the webflow_item_id rather than a bare error dict.
+            # Keep item id available for remediation, but return an explicit error
+            # so pipeline status is truthful and alerts can fire.
             logger.warning(
                 "[PublishingAgent] Webflow publish failed (item saved as draft): %s", exc
             )
-            publish_response = {"error": str(exc)}
+            publish_error = str(exc)
+            publish_response = {"error": publish_error}
 
         # Refresh the item so callers receive authoritative publish flags/timestamps.
         try:
@@ -789,6 +805,15 @@ class PublishingAgent(BaseAgent):
             webflow_item = refreshed.json()
         except Exception:
             webflow_item = response
+
+        if publish_error:
+            return {
+                "status": "error",
+                "reason": f"Webflow publish failed (item saved as draft): {publish_error}",
+                "webflow_item": webflow_item,
+                "webflow_publish": publish_response,
+                "webflow_item_id": created_item_id,
+            }
 
         # Trigger a full site publish so the new post appears on the live CDN.
         site_publish_response: Dict[str, Any] = {}
