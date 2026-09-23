@@ -20,7 +20,7 @@ Usage
 from __future__ import annotations
 
 from datetime import date, timedelta
-from pathlib import Path
+from .google_credentials import reporting_credentials
 from typing import Any, Dict, List
 
 
@@ -29,7 +29,7 @@ class GA4Client:
 
     def __init__(self, service_account_json: str, property_id: str) -> None:
         self.service_account_json = service_account_json
-        self.property_id = property_id.lstrip("properties/")  # accept both forms
+        self.property_id = property_id.removeprefix("properties/")  # accept both forms
         self._client = None  # lazy-loaded
 
     # ── Internal helpers ──────────────────────────────────────────────────────
@@ -46,16 +46,8 @@ class GA4Client:
                 "Run: pip install google-analytics-data google-auth"
             ) from exc
 
-        key_path = Path(self.service_account_json)
-        if not key_path.exists():
-            raise FileNotFoundError(
-                f"GA4 service account key not found: {key_path}. "
-                "Set GSC_SERVICE_ACCOUNT_JSON to the path of your JSON key file."
-            )
-
-        creds = service_account.Credentials.from_service_account_file(
-            str(key_path),
-            scopes=["https://www.googleapis.com/auth/analytics.readonly"],
+        creds = reporting_credentials(
+            self.service_account_json, ["https://www.googleapis.com/auth/analytics.readonly"]
         )
         self._client = BetaAnalyticsDataClient(credentials=creds)
         return self._client
@@ -70,13 +62,14 @@ class GA4Client:
         """Fetch per-page engagement metrics for the trailing N days.
 
         Returns a list of dicts with keys:
-            page_path, sessions, avg_engagement_seconds, scroll_percentage, bounce_rate
+            page_path, sessions, avg_session_duration_seconds, scrolled_users, bounce_rate
         """
         try:
             from google.analytics.data_v1beta.types import (
                 DateRange,
                 Dimension,
                 Metric,
+                OrderBy,
                 RunReportRequest,
             )
         except ImportError as exc:
@@ -87,7 +80,7 @@ class GA4Client:
 
         client = self._get_client()
         end_date = date.today() - timedelta(days=1)
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=days - 1)
 
         request = RunReportRequest(
             property=f"properties/{self.property_id}",
@@ -104,6 +97,7 @@ class GA4Client:
                     end_date=end_date.isoformat(),
                 )
             ],
+            order_bys=[OrderBy(metric=OrderBy.MetricOrderBy(metric_name="sessions"), desc=True)],
             limit=row_limit,
         )
 
@@ -119,7 +113,7 @@ class GA4Client:
                 {
                     "page_path": page,
                     "sessions": sessions,
-                    "avg_engagement_seconds": round(avg_dur, 0),
+                    "avg_session_duration_seconds": round(avg_dur, 0),
                     "scrolled_users": round(scrolled, 0),
                     "bounce_rate": round(bounce * 100, 1),
                 }
@@ -136,7 +130,7 @@ class GA4Client:
         """Return a formatted summary string ready for injection into an LLM prompt.
 
         Flags:
-        - High-traffic pages with low engagement (update candidates)
+        - High-traffic pages with short sessions (update candidates)
         - Low-traffic pages that may have topic gaps
         """
         try:
@@ -148,29 +142,29 @@ class GA4Client:
             return "[GA4] No page data returned — verify property ID and service account access."
 
         lines = [f"=== Google Analytics 4 — last {days} days ===", ""]
-        lines.append("PAGE ENGAGEMENT (sessions, avg engagement time, scroll %):")
+        lines.append("PAGE METRICS (sessions, average session duration, scrolled users):")
         for p in pages[:20]:
             slug = p["page_path"].strip("/").split("/")[-1] or "homepage"
             flags = []
-            if p["avg_engagement_seconds"] < 60 and p["sessions"] > 50:
-                flags.append("⚠ low engagement")
+            if p["avg_session_duration_seconds"] < 60 and p["sessions"] > 50:
+                flags.append("⚠ short sessions")
             if p["bounce_rate"] > 70:
                 flags.append("⚠ high bounce")
             flag_str = "  " + ", ".join(flags) if flags else ""
             lines.append(
                 f"  /{slug} — {p['sessions']} sessions, "
-                f"{int(p['avg_engagement_seconds'])}s avg, "
+                f"{int(p['avg_session_duration_seconds'])}s average session duration, "
                 f"{p['scrolled_users']:.0f} scrolled"
                 f"{flag_str}"
             )
 
-        # Highlight update candidates: top traffic + poor engagement
+        # Highlight update candidates: top traffic + short sessions
         update_candidates = [
             p for p in pages
-            if p["sessions"] > 30 and p["avg_engagement_seconds"] < 60
+            if p["sessions"] > 30 and p["avg_session_duration_seconds"] < 60
         ]
         if update_candidates:
-            lines += ["", "UPDATE CANDIDATES (traffic but poor engagement — consider refreshing):"]
+            lines += ["", "UPDATE CANDIDATES (traffic but short sessions — consider refreshing):"]
             for p in update_candidates[:5]:
                 slug = p["page_path"].strip("/").split("/")[-1] or "homepage"
                 lines.append(f"  /{slug}")

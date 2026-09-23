@@ -140,3 +140,29 @@ class TestFormatFeedback:
             result = agent.evaluate("content")
         feedback_str = agent.format_feedback_for_editor(result)
         assert "PASSES" in feedback_str
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda x: x.update(average_score=10, scores={k: 2 for k in x["scores"]}),
+    lambda x: x["scores"].update(writing_quality=float("nan")),
+    lambda x: x["scores"].update(writing_quality=True),
+    lambda x: x["scores"].pop("writing_quality"),
+    lambda x: x["feedback"].update(critical_issues=["Unsupported product claim"]),
+    lambda x: x.update(recommended_action="REVISE"),
+])
+def test_evaluation_does_not_trust_claimed_average_or_approval(mutation):
+    from copy import deepcopy
+    payload = deepcopy(PASSING_JSON)
+    mutation(payload)
+    agent = _make_agent()
+    with patch.object(agent, "run", return_value=MagicMock(raw_response=json.dumps(payload))):
+        assert agent.evaluate("article").passes_threshold is False
+
+
+@pytest.mark.parametrize("payload", [[], None, {"scores": []}, "not an evaluation"])
+def test_invalid_evaluation_structure_is_rejected(payload):
+    agent = _make_agent()
+    with patch.object(agent, "run", return_value=MagicMock(raw_response=json.dumps(payload))):
+        result = agent.evaluate("article")
+    assert result.passes_threshold is False
+    assert result.feedback["critical_issues"]

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
-from pathlib import Path
+from .google_credentials import reporting_credentials
 from typing import Any, Dict, List, Optional
 
 
@@ -52,16 +52,8 @@ class GSCClient:
                 "Run: pip install google-api-python-client google-auth"
             ) from exc
 
-        key_path = Path(self.service_account_json)
-        if not key_path.exists():
-            raise FileNotFoundError(
-                f"GSC service account key not found: {key_path}. "
-                "Set GSC_SERVICE_ACCOUNT_JSON to the path of your JSON key file."
-            )
-
-        creds = service_account.Credentials.from_service_account_file(
-            str(key_path),
-            scopes=["https://www.googleapis.com/auth/webmasters.readonly"],
+        creds = reporting_credentials(
+            self.service_account_json, ["https://www.googleapis.com/auth/webmasters.readonly"]
         )
         self._service = build("searchconsole", "v1", credentials=creds, cache_discovery=False)
         return self._service
@@ -74,14 +66,14 @@ class GSCClient:
         row_limit: int = 50,
         start_row: int = 0,
     ) -> List[Dict[str, Any]]:
-        """Fetch top queries ranked by impressions for the trailing N days.
+        """Fetch top queries ranked by clicks for the trailing N days.
 
         Returns a list of dicts with keys:
             query, clicks, impressions, ctr, position
         """
         service = self._get_service()
         end_date = date.today() - timedelta(days=1)
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=days - 1)
 
         body = {
             "startDate": start_date.isoformat(),
@@ -121,7 +113,7 @@ class GSCClient:
         """
         service = self._get_service()
         end_date = date.today() - timedelta(days=1)
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=days - 1)
 
         body = {
             "startDate": start_date.isoformat(),
@@ -156,7 +148,7 @@ class GSCClient:
         """Return a formatted summary string ready for injection into an LLM prompt.
 
         Covers:
-        - Top queries by impressions with CTR and avg position
+        - Top queries by clicks with CTR and avg position
         - Queries with high impressions but position > 10 (opportunity gap)
         - Top pages by clicks
         """
@@ -172,7 +164,7 @@ class GSCClient:
         lines: List[str] = [
             f"=== Google Search Console — last {days} days ===",
             "",
-            "TOP QUERIES BY IMPRESSIONS:",
+            "TOP QUERIES BY CLICKS:",
         ]
         for q in queries[:20]:
             flag = " ⚠ low CTR" if q["ctr"] < 2.0 and q["impressions"] > 100 else ""
@@ -195,7 +187,7 @@ class GSCClient:
         lines += ["", "TOP PAGES BY CLICKS:"]
         for p in pages[:10]:
             lines.append(
-                f"  {p['page'].split('/')[-2] or p['page']} — {p['clicks']} clicks, pos {p['position']}"
+                f"  {p['page']} — {p['clicks']} clicks, pos {p['position']}"
             )
 
         return "\n".join(lines)

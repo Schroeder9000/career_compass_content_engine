@@ -200,8 +200,10 @@ class ReadabilityScorer:
             ts_ease = round(float(textstat.flesch_reading_ease(plain)), 1)
             ts_fk = round(float(textstat.flesch_kincaid_grade(plain)), 1)
             ts_smog = round(float(textstat.smog_index(plain)), 1)
-        except ImportError:
-            pass
+        except (ImportError, LookupError, OSError):
+            # Optional dictionaries may be unavailable in a fresh/offline container.
+            # Keep the local calculations instead of failing the publication run.
+            ts_ease = ts_fk = ts_smog = None
 
         # Determine active reading score values
         active_ease = ts_ease if ts_ease is not None else flesch_ease

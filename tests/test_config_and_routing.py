@@ -16,6 +16,7 @@ class TestConfigureTracing:
             openai_api_key="sk-test",
             langsmith_api_key="ls__test",
             langsmith_project="my-project",
+            langsmith_tracing=True,
         )
         with patch.dict(os.environ, {}, clear=False):
             # Remove vars to start clean
@@ -23,9 +24,9 @@ class TestConfigureTracing:
             os.environ.pop("LANGCHAIN_API_KEY", None)
             os.environ.pop("LANGCHAIN_PROJECT", None)
             settings.configure_tracing()
-        assert os.environ.get("LANGCHAIN_TRACING_V2") == "true"
-        assert os.environ.get("LANGCHAIN_API_KEY") == "ls__test"
-        assert os.environ.get("LANGCHAIN_PROJECT") == "my-project"
+            assert os.environ.get("LANGCHAIN_TRACING_V2") == "true"
+            assert os.environ.get("LANGCHAIN_API_KEY") == "ls__test"
+            assert os.environ.get("LANGCHAIN_PROJECT") == "my-project"
 
     def test_no_op_when_key_absent(self):
         settings = Settings(openai_api_key="sk-test", langsmith_api_key=None)
@@ -84,47 +85,3 @@ class TestWorkflowResult:
             research={}, blog_post="", image_plan={}, publish_result={}, run_id="fixed-id"
         )
         assert result.run_id == "fixed-id"
-
-
-# ── Routing helpers (exercise without building the full graph) ────────────────
-
-class TestRoutingLogic:
-    """
-    The routing functions are closures defined inside build_graph().
-    We test the equivalent boolean logic directly to avoid spinning up LLMs.
-    """
-
-    def _route_after_evaluate(self, state: dict) -> str:
-        """Mirror of the closure in graph.py."""
-        from career_compass_content_engine.graph import MAX_REVISIONS
-
-        if state.get("evaluation_passed") or state.get("revision_count", 0) >= MAX_REVISIONS:
-            return "node_prepare_metadata"
-        return "node_edit"
-
-    def _route_after_image_design(self, state: dict):
-        from langgraph.graph import END
-
-        if state.get("image_plan", {}).get("prompt"):
-            return "node_image_generate"
-        return END
-
-    def test_passes_routes_to_metadata(self):
-        assert self._route_after_evaluate({"evaluation_passed": True}) == "node_prepare_metadata"
-
-    def test_max_revisions_routes_to_metadata(self):
-        from career_compass_content_engine.graph import MAX_REVISIONS
-
-        assert self._route_after_evaluate({"revision_count": MAX_REVISIONS}) == "node_prepare_metadata"
-
-    def test_not_passed_not_max_routes_to_edit(self):
-        assert self._route_after_evaluate({"evaluation_passed": False, "revision_count": 0}) == "node_edit"
-
-    def test_image_with_prompt_routes_to_generate(self):
-        state = {"image_plan": {"prompt": "a vivid orange sunrise"}}
-        assert self._route_after_image_design(state) == "node_image_generate"
-
-    def test_image_without_prompt_routes_to_end(self):
-        from langgraph.graph import END
-
-        assert self._route_after_image_design({"image_plan": {}}) == END

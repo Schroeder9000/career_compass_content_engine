@@ -1,0 +1,28 @@
+{
+  "version": "promotion-case-2026-09-23",
+  "brand": "Career Compass",
+  "product": "Promotion Case",
+  "release_status": "available",
+  "audience": "Adults 18 and older in the United States; available for iPhone",
+  "price": "One-time US in-app purchase of $24.99 for one case per account; no subscription required for this purchase",
+  "deliverables": ["Manager-facing Promotion Case PDF", "Separate private Conversation Guide PDF"],
+  "journey": [
+    "Complete role and pay setup",
+    "Approve one Evidence example in each of five Case Check areas: results, teamwork, leadership, bigger responsibilities, and strategic impact; each example supports one area",
+    "Review the offer, separately authorize AI preparation, and complete the in-app purchase",
+    "Review both documents, make supported edits, and approve email delivery of two PDFs"
+  ],
+  "ai": "Evidence can be saved without AI drafting; optional AI drafting and purchased document preparation have explicit permissions identifying OpenAI",
+  "pay_context": "Published US national occupation benchmarks, or clearly labeled age-adjusted national earnings context when a reliable occupation match is unavailable; estimates, not exact valuations",
+  "restore": "Restores access to the existing purchased case, not another case",
+  "privacy": "Employer cannot access the private account through the app; the customer chooses what to share",
+  "limitations": "No guaranteed promotion, raise, salary, or employment outcome",
+  "do_not_claim": ["general AI career coach or unlimited career chat", "personalized growth plans", "weekly coaching emails or nudges", "career KPI tracking", "free trial", "global availability", "guaranteed outcomes"],
+  "links": {
+    "website": "https://careeraiapp.com/",
+    "app_store": "https://apps.apple.com/us/app/promotion-case-career-compass/id6670568018",
+    "privacy": "https://careeraiapp.com/privacy",
+    "support": "https://careeraiapp.com/contact"
+  },
+  "editorial_rule": "Use a brief relevant product connection, not a forced sales pitch. Historical articles and voice examples are not authoritative product facts. Link only to known live destinations; product/help/methodology routes are still being staged. Do not fabricate customer stories, outcomes, source citations, or the author's personal experience. Clearly label hypothetical examples."
+}

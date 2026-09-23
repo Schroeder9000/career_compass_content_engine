@@ -6,6 +6,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from typing import Optional
 
+from ..product_context import product_context
 from .base import AgentResult, BaseAgent
 
 
@@ -133,7 +134,7 @@ class EditingAgent(BaseAgent):
         else:
             prompt = EDIT_TEMPLATE.format(draft=draft_cleaned)
         
-        result = self.run(prompt)
+        result = self.run(prompt + product_context())
         
         # Also strip from the result if the LLM adds them back
         if result.raw_response:

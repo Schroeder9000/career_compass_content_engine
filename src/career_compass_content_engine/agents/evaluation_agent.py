@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from typing import Dict, List
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
+from ..product_context import product_context
 from .base import BaseAgent
 
 
@@ -64,7 +66,7 @@ SCORING CRITERIA (0-10 scale for each):
    - 5 = Competent but pedestrian, paragraphs of similar length and sentence count
    - 0 = Generic, repetitive, "AI-sounding" language
 
-OVERALL QUALITY THRESHOLD: Average score must be ≥ 8.7 to publish
+OVERALL QUALITY THRESHOLD: Average score must be ≥ {score_threshold} to publish
 
 ---
 
@@ -84,7 +86,7 @@ YOUR OUTPUT MUST BE VALID JSON with this exact structure:
     "writing_quality": <0-10>
   }},
   "average_score": <calculated average>,
-  "passes_threshold": <true if avg >= 8.7, false otherwise>,
+  "passes_threshold": <true if avg >= {score_threshold}, false otherwise>,
   "feedback": {{
     "strengths": [
       "Specific strength 1 with line/section reference",
@@ -108,10 +110,10 @@ INSTRUCTIONS:
 3. Quote problematic phrases that sound AI-generated
 4. Be tough but constructive - this must be publication-worthy
 5. If recommending REVISE, prioritize 2-3 most critical issues
-6. MANDATORY: For every criterion scored below 8.7, you MUST include at least one entry in
+6. MANDATORY: For every criterion scored below {score_threshold}, you MUST include at least one entry in
    critical_issues that states: the criterion name, the specific section where the problem occurs,
    the exact issue (quote the weak text if possible), and a concrete fix instruction.
-   An empty critical_issues array is only acceptable when ALL criteria score 8.7 or above.
+   An empty critical_issues array is only acceptable when ALL criteria score {score_threshold} or above.
 
 Return ONLY the JSON object, no other text.
 """
@@ -145,12 +147,38 @@ class EvaluationAgent(BaseAgent):
         Returns:
             EvaluationResult with scores, feedback, and recommendation
         """
-        prompt = EVALUATION_TEMPLATE.format(content=content)
+        prompt = EVALUATION_TEMPLATE.format(content=content, score_threshold=self.score_threshold) + product_context()
         result = self.run(prompt)
         
         # Parse the JSON response
         evaluation_data = self._parse_evaluation(result.raw_response)
         
+        required = {"word_count_depth", "specific_examples", "brand_voice",
+                    "emotional_depth", "actionability", "writing_quality"}
+        scores = evaluation_data.get("scores", {}) if isinstance(evaluation_data, dict) else {}
+        feedback = evaluation_data.get("feedback", {}) if isinstance(evaluation_data, dict) else {}
+        valid = (
+            isinstance(scores, dict) and required.issubset(scores)
+            and all(isinstance(scores[k], (int, float)) and not isinstance(scores[k], bool)
+                    and math.isfinite(scores[k]) and 0 <= scores[k] <= 10 for k in required)
+            and isinstance(feedback, dict)
+            and all(isinstance(feedback.get(k), list)
+                    and all(isinstance(v, str) for v in feedback[k])
+                    for k in ("strengths", "critical_issues", "improvement_suggestions"))
+            and evaluation_data.get("recommended_action") in {"PUBLISH", "REVISE"}
+        )
+        if not valid:
+            evaluation_data = self._default_evaluation()
+        scores = {k: evaluation_data["scores"][k] for k in sorted(required)}
+        evaluation_data["scores"] = scores
+        average = sum(scores[k] for k in required) / len(required)
+        evaluation_data["average_score"] = average
+        evaluation_data["passes_threshold"] = (
+            average >= self.score_threshold
+            and not evaluation_data["feedback"]["critical_issues"]
+            and evaluation_data["recommended_action"] == "PUBLISH"
+        )
+
         return EvaluationResult(
             scores=evaluation_data.get("scores", {}),
             average_score=evaluation_data.get("average_score", 0.0),
