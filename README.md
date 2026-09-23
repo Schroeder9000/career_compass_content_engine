@@ -62,6 +62,12 @@ modes, mismatched CMS schemas, uncertain create results, duplicate slugs, and
 required missing images stop writes or publication rather than guessing.
 Non-idempotent creates are never automatically retried after ambiguous failures.
 
+The optional `publication-date` DateTime field stores the public article date
+independently of Webflow's update and republish timestamps. Live articles receive
+a UTC date when created. For manual drafts, set Publication date when publishing;
+preserve it during later maintenance. If the field exists with an incompatible
+type, publication stops for review.
+
 Editorial scores are validated and averaged in code. Below-threshold results,
 critical issues, and missing/negative metadata approval cannot publish. After
 three unsuccessful editorial evaluations, or failed metadata QA, the draft and

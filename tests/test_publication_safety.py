@@ -1,6 +1,7 @@
 """Exercise the real publisher boundary with mocked HTTP and real graph routing."""
 import asyncio
 import json
+from datetime import datetime, timezone
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -97,6 +98,29 @@ def test_create_timeout_does_not_retry_non_idempotent_post():
     with pytest.raises(RuntimeError):
         cms._request_with_retries("POST", "https://api.webflow.com/v2/collections/test/items")
     assert cms.session.request.call_count == 1
+
+
+@pytest.mark.parametrize("mode", ["live", "draft"])
+def test_publication_date_is_only_assigned_for_live_articles(monkeypatch, mode):
+    agent, cms = publisher(monkeypatch, mode)
+    cms.get_collection_fields.return_value.append({"slug": "publication-date", "type": "DateTime"})
+    before = datetime.now(timezone.utc)
+    result = agent.upload_to_webflow(METADATA, BODY, image_url="https://example.com/image.png")
+    assert result["status"] == ("success" if mode == "live" else "draft")
+    extra = cms.create_draft_blog_item.call_args.kwargs["extra_field_data"]
+    if mode == "live":
+        assert before <= datetime.fromisoformat(extra["publication-date"]) <= datetime.now(timezone.utc)
+    else:
+        assert "publication-date" not in extra
+
+
+def test_incompatible_publication_date_field_blocks_write(monkeypatch):
+    agent, cms = publisher(monkeypatch)
+    cms.get_collection_fields.return_value.append({"slug": "publication-date", "type": "PlainText"})
+    result = agent.upload_to_webflow(METADATA, BODY, image_url="https://example.com/image.png")
+    assert result["status"] == "error"
+    assert "publication-date" in result["reason"]
+    cms.create_draft_blog_item.assert_not_called()
 
 
 def test_publish_api_partial_failure_is_error():

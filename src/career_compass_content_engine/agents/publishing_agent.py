@@ -7,6 +7,7 @@ import mimetypes
 import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -428,6 +429,8 @@ class PublishingAgent(BaseAgent):
         }
         mismatches = [key for key, kind in contract.items()
                       if fields.get(key, {}).get("type") != kind]
+        if "publication-date" in fields and fields["publication-date"].get("type") != "DateTime":
+            mismatches.append("publication-date")
         if mismatches:
             return {"status": "error", "reason": "CMS schema mismatch: " + ", ".join(mismatches)}
 
@@ -469,6 +472,11 @@ class PublishingAgent(BaseAgent):
         author = self.settings.webflow_author_id or "6759b39c1464ba09dc7d783d"
         category = self.settings.webflow_category_id or "6759b39c1464ba09dc7d785e"
         image_alt = metadata.get("image_alt") or title
+        extra_fields = {"slug": slug, "blog-post-category": category}
+        # Keep public dates stable when Webflow later republishes an older item.
+        # Manual drafts receive their date from the editor when ready to publish.
+        if mode == "live" and "publication-date" in fields:
+            extra_fields["publication-date"] = datetime.now(timezone.utc).isoformat()
         try:
             item = cms.create_draft_blog_item(
                 collection_id, title=title, description=summary, article_html=article_html,
@@ -477,7 +485,7 @@ class PublishingAgent(BaseAgent):
                 field_slug_description="summary", field_slug_article="blog-post-richt-text",
                 field_slug_author="blog-post-author", field_slug_main_image="blog-post-featured-image-photo",
                 field_slug_thumb_image="blog-post-thumbnail-image-photo",
-                extra_field_data={"slug": slug, "blog-post-category": category},
+                extra_field_data=extra_fields,
             )
         except Exception as exc:
             return {"status": "error", "reason": f"CMS create outcome requires review before retry: {exc}",
