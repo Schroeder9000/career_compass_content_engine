@@ -34,6 +34,9 @@ import contextvars
 import json
 import logging
 import re
+import os
+from pathlib import Path
+from uuid import uuid4
 from typing import Any, Callable, Dict, Optional
 
 from langgraph.graph import END, START, StateGraph
@@ -46,6 +49,8 @@ from .agents.publishing_agent import PublishingAgent
 from .agents.research_agent import ResearchAgent
 from .agents.writing_agent import WritingAgent
 from .config import Settings, get_settings
+from .product_context import product_context
+from .publication_policy import MAX_REVISIONS, metadata_blockers, route_after_evaluate, route_after_metadata
 from .rag import RAGPipeline
 from .state import ContentState
 from .tools.topic_store import TopicStore
@@ -60,7 +65,6 @@ from .tools.readability_scorer import ReadabilityScorer
 logger = logging.getLogger(__name__)
 
 # ── Pipeline constants (single source of truth) ───────────────────────────────
-MAX_REVISIONS: int = 3        # Max evaluation cycles before forcing publish
 SCORE_THRESHOLD: float = 8.5  # Average score (0–10) required to pass without revision
 IMAGE_HISTORY_WINDOW: int = 8
 
@@ -352,12 +356,15 @@ def _check_required_ending(markdown: str) -> list[str]:
 def _append_fallback_closing(markdown: str) -> str:
     """Final safety net if LLM repair still misses required ending elements."""
     closing = (
-        "\n\nBefore you publish your next move at work, make one choice on purpose: "
-        "ask earlier, with sharper context, while options are still open. "
-        "That is what separates reactive stress from professional judgment.\n\n"
-        "If you want help building that habit, Career Compass is designed for exactly this moment: "
-        "a personalized growth plan, weekly coaching nudges, and visible progress tracking so your "
-        "career growth is deliberate instead of accidental."
+        "\n\nStart with one specific example of the work you want others to understand. "
+        "Describe your contribution, the result, and why it mattered. A clear record gives you "
+        "something concrete to review before deciding what to ask for or what to do next. "
+        "Keep the wording accurate and leave out claims you cannot support.\n\n"
+        "When you are preparing for a promotion or pay conversation, Promotion Case by "
+        "[Career Compass](https://careeraiapp.com/) brings your approved Evidence and sourced "
+        "U.S. pay context into a manager-facing Promotion Case PDF and a separate private "
+        "Conversation Guide PDF. Review the documents and choose what to share. The product "
+        "helps you prepare; it does not guarantee a promotion or raise."
     )
     base = (markdown or "").rstrip()
     if re.search(r"\bcareer\s+compass\b", base, re.IGNORECASE) and _has_substantive_closing(base):
@@ -502,7 +509,10 @@ def build_graph(
                 logger.info("📁 [research] fetching GA4 data...")
                 ga4_summary = ga4_client.fetch_engagement_summary(days=90)
                 perf_parts.append(ga4_summary)
-                logger.info("✅ [research] GA4 loaded")
+                if ga4_summary.startswith("[GA4]"):
+                    logger.warning("[research] %s", ga4_summary)
+                else:
+                    logger.info("✅ [research] GA4 loaded")
             except Exception as exc:
                 logger.warning("⚠️  [research] GA4 fetch failed: %s", exc)
 
@@ -739,7 +749,9 @@ def build_graph(
         evaluation = await _run_sync(lambda: evaluation_agent.evaluate(state["edited_content"]))
         logger.debug("[evaluate] raw JSON: %.500s", str(evaluation.raw_json))
         revision_count = state.get("revision_count", 0) + 1
-        passes = evaluation.average_score >= SCORE_THRESHOLD
+        passes = (evaluation.passes_threshold is True
+                  and evaluation.average_score >= SCORE_THRESHOLD
+                  and not evaluation.feedback.get("critical_issues"))
 
         # Always log per-criterion scores for full visibility
         score_lines = "  ".join(
@@ -757,7 +769,7 @@ def build_graph(
         if passes:
             logger.info("✅ [evaluate] approved after %d cycle(s)", revision_count)
         elif revision_count >= MAX_REVISIONS:
-            logger.warning("⚠️  [evaluate] below threshold after %d revision(s). Proceeding to publish.", MAX_REVISIONS)
+            logger.warning("⚠️  [evaluate] below threshold after %d revision(s). Publication blocked for review.", MAX_REVISIONS)
         else:
             logger.info("🔄 [evaluate] queuing revision %d...", revision_count + 1)
 
@@ -777,7 +789,7 @@ def build_graph(
 
         if ending_issues:
             logger.warning("⚠️  [prepare_metadata] ending guard triggered: %s", " | ".join(ending_issues))
-            repair_feedback = (
+            repair_feedback = product_context() + (
                 "HARD REQUIREMENTS BEFORE PUBLISH:\n"
                 "- Add a natural Career Compass mention in the final section/conclusion.\n"
                 "- End with 2-4 substantive closing paragraphs that synthesize the argument and leave a concrete mindset shift.\n"
@@ -794,8 +806,10 @@ def build_graph(
 
         result = await _run_sync(lambda: publisher.prepare_metadata(content_for_publish))
         metadata_payload = _safe_parse(result.raw_response)
+        if not isinstance(metadata_payload, dict):
+            metadata_payload = {}
         logger.debug("[prepare_metadata] payload keys: %s", list(metadata_payload.keys()))
-        if not metadata_payload.get("content_ready", True):
+        if metadata_blockers(metadata_payload):
             issues = metadata_payload.get("blocking_issues", [])
             logger.warning("⚠️  [prepare_metadata] content_ready=False. Blocking issues: %s", issues)
         logger.info("✅ [prepare_metadata] done")
@@ -820,7 +834,7 @@ def build_graph(
                 image_file_path=image_path,
             )
         )
-        result["image_attached"] = bool(image_path) and result.get("status") not in ("skipped", "error")
+        result.setdefault("image_attached", False)
         status = result.get("status", "unknown")
         logger.info("✅ [publish] done — status: %s  image_attached: %s", status, result["image_attached"])
         publish_error = result.get("reason") or (result.get("webflow_publish") or {}).get("error")
@@ -836,7 +850,7 @@ def build_graph(
             )
             topic_store.append(
                 topic=research_payload.get("topic", ""),
-                slug=state.get("metadata_payload", {}).get("slug") or research_payload.get("suggested_title", ""),
+                slug=result.get("slug") or state.get("metadata_payload", {}).get("slug") or research_payload.get("suggested_title", ""),
                 suggested_title=research_payload.get("suggested_title", ""),
                 final_score=state.get("evaluation_avg", 0.0),
                 revision_count=state.get("revision_count", 0),
@@ -857,13 +871,24 @@ def build_graph(
 
         return {"publish_result": result}
 
-    # ── Routing (conditional edges) ────────────────────────────────────────────
-
-    def route_after_evaluate(state: ContentState) -> str:
-        """Loop back to editing or proceed to publishing."""
-        if state.get("evaluation_passed") or state.get("revision_count", 0) >= MAX_REVISIONS:
-            return "node_prepare_metadata"
-        return "node_edit"
+    async def node_blocked(state: ContentState) -> dict:
+        """Preserve rejected content on the mounted cache volume, never in public CMS."""
+        reason = (state.get("feedback_text") or "Editorial quality was not approved")
+        if state.get("evaluation_passed"):
+            reason = "; ".join(metadata_blockers(state.get("metadata_payload")))
+        root = Path(os.environ.get("TOPIC_HISTORY_PATH", ".cache/topic_history.json")).parent / "blocked"
+        root.mkdir(parents=True, exist_ok=True)
+        artifact = root / f"{uuid4().hex}.json"
+        artifact.write_text(json.dumps({
+            "reason": reason, "article": state.get("edited_content", ""),
+            "metadata": state.get("metadata_payload", {}),
+            "scores": state.get("evaluation_scores", {}),
+            "revision_count": state.get("revision_count", 0),
+        }, ensure_ascii=False, indent=2))
+        logger.warning("Publication blocked. Draft saved to %s", artifact)
+        return {"publish_result": {"status": "blocked", "reason": reason,
+                                  "draft_artifact": str(artifact),
+                                  "metadata": state.get("metadata_payload", {})}}
 
     # ── Graph assembly ─────────────────────────────────────────────────────────
     builder = StateGraph(ContentState)
@@ -877,6 +902,7 @@ def build_graph(
     builder.add_node("node_evaluate", node_evaluate)
     builder.add_node("node_prepare_metadata", node_prepare_metadata)
     builder.add_node("node_publish", node_publish)
+    builder.add_node("node_blocked", node_blocked)
 
     # Entry point
     builder.add_edge(START, "node_research")
@@ -904,7 +930,8 @@ def build_graph(
     builder.add_edge("node_image_generate", END)
 
     # Publishing branch (triggered by content loop completion)
-    builder.add_edge("node_prepare_metadata", "node_publish")
+    builder.add_conditional_edges("node_prepare_metadata", route_after_metadata)
+    builder.add_edge("node_blocked", END)
     builder.add_edge("node_publish", END)
 
     # ── Checkpointing ──────────────────────────────────────────────────────────

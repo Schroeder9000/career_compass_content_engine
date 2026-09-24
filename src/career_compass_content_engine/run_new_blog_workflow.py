@@ -19,9 +19,15 @@ def _fetch_webflow_content(settings) -> str:
     
     try:
         cms = WebflowCMS(settings.webflow_api_token)
-        result = cms.list_items(settings.webflow_collection_id, limit=100)
-        
-        items = result.get("items", [])
+        items = []
+        offset = 0
+        while True:
+            result = cms.list_items(settings.webflow_collection_id, limit=100, offset=offset)
+            page = result.get("items", [])
+            items.extend(item for item in page if not item.get("isDraft") and not item.get("isArchived"))
+            offset += len(page)
+            if not page or offset >= result.get("pagination", {}).get("total", offset):
+                break
         if not items:
             return "[No published items found in Webflow collection]"
         
@@ -34,19 +40,19 @@ def _fetch_webflow_content(settings) -> str:
             title = field_data.get("name", field_data.get("title", "Untitled"))
             slug = field_data.get("slug", "")
             summary = field_data.get("description", field_data.get("summary", ""))
-            published_date = item.get("publishedOn", item.get("createdOn", ""))
+            published_date = item.get("lastPublished", item.get("createdOn", ""))
             
             # Build structured representation
             item_text = f"Title: {title}\n"
             if slug:
-                item_text += f"Slug: {slug}\n"
+                item_text += f"URL: https://careeraiapp.com/blog/{slug}\n"
             if summary:
                 item_text += f"Summary: {summary}\n"
             if published_date:
                 item_text += f"Published: {published_date}\n"
             
             # Include article body preview if available
-            article_body = field_data.get("post-body", field_data.get("article", field_data.get("content", "")))
+            article_body = field_data.get("blog-post-richt-text", "")
             if article_body:
                 # Strip HTML tags for cleaner preview
                 import re
@@ -87,7 +93,7 @@ def load_existing_content() -> str:
     if webflow_content:
         sections.append(f"=== PUBLISHED WEBFLOW CONTENT ===\n\n{webflow_content}")
     if local_content:
-        sections.append(f"=== LOCAL BRAND EXAMPLES ===\n\n{local_content}")
+        sections.append(f"=== HISTORICAL VOICE EXAMPLES (NOT CURRENT PRODUCT FACTS) ===\n\n{local_content}")
     
     return "\n\n\n".join(sections) if sections else "No existing content available."
 

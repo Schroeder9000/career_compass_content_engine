@@ -134,9 +134,13 @@ def run_weekday_workflow():
             or publish_result.get("webflow_item", {}).get("id")
             or "(item id unavailable)"
         )
-        subject = "Career Compass workflow success"
+        status = publish_result.get("status", "unknown")
+        ok = status == "success"
+        subject = f"Career Compass workflow {status}"
         body = (
-            f"Status: SUCCESS\n"
+            f"Status: {status.upper()}\n"
+            f"Reason: {publish_result.get('reason', '')}\n"
+            f"Draft artifact: {publish_result.get('draft_artifact', '')}\n"
             f"Started (UTC): {started_at.isoformat()}\n"
             f"Finished (UTC): {datetime.now(timezone.utc).isoformat()}\n"
             f"Title: {title}\n"
@@ -144,7 +148,7 @@ def run_weekday_workflow():
             f"Total tokens: {result.total_tokens}\n"
             f"Estimated cost USD: {result.total_cost_usd:.4f}\n"
         )
-        _notify(subject, body, ok=True)
+        _notify(subject, body, ok=ok)
     except Exception as exc:
         subject = "Career Compass workflow failure"
         body = (

@@ -77,7 +77,7 @@ class WebflowContentClient:
         while True:
             page = self._get_items_page(offset=offset)
             if "error" in page:
-                break
+                raise RuntimeError("Webflow corpus fetch failed; inventory is incomplete")
             raw_items = page.get("items", [])
             for item in raw_items:
                 field_data = item.get("fieldData", {})
@@ -129,7 +129,7 @@ class WebflowContentClient:
             summary = item.get("summary", "").strip()
             tags = ", ".join(item.get("tags", [])) if item.get("tags") else ""
             lines.append(f"• {title}")
-            lines.append(f"  slug: /{slug}")
+            lines.append(f"  URL: https://careeraiapp.com/blog/{slug}")
             if summary:
                 lines.append(f"  summary: {summary[:140]}")
             if tags:

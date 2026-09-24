@@ -42,6 +42,8 @@ class Settings:
     log_level: str = "INFO"
     # LangGraph checkpointing — SQLite DB path (set to empty string to disable)
     checkpointer_path: str = ".cache/checkpoints.db"
+    # Passing articles remain automatic; draft mode never calls a publish endpoint.
+    publish_mode: str = "live"
 
 
     @classmethod
@@ -54,7 +56,8 @@ class Settings:
             webflow_author_id=os.environ.get("WEBFLOW_AUTHOR_ID"),
             webflow_category_id=os.environ.get("WEBFLOW_CATEGORY_ID"),
             modal_secret_name=os.environ.get("MODAL_SECRET_NAME"),
-            gsc_service_account_json=os.environ.get("GSC_SERVICE_ACCOUNT_JSON"),
+            gsc_service_account_json=(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+                                      or os.environ.get("GSC_SERVICE_ACCOUNT_JSON")),
             gsc_site_url=os.environ.get("GSC_SITE_URL"),
             ga4_property_id=os.environ.get("GA4_PROPERTY_ID"),
             serper_api_key=os.environ.get("SERPER_API_KEY"),
@@ -69,11 +72,14 @@ class Settings:
             langsmith_tracing=(os.environ.get("LANGSMITH_TRACING") or "").strip().lower() in {"1", "true", "yes", "on"},
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
             checkpointer_path=os.environ.get("CHECKPOINTER_PATH", ".cache/checkpoints.db"),
+            publish_mode=os.environ.get("PUBLISH_MODE", "live").strip().lower(),
         )
 
     def validate(self) -> None:
         if not self.openai_api_key:
             raise ValueError("OPENAI_API_KEY is required for the content engine to run")
+        if self.publish_mode not in {"live", "draft"}:
+            raise ValueError("PUBLISH_MODE must be live or draft")
 
     def configure_tracing(self) -> None:
         """Activate LangSmith tracing when a ``LANGCHAIN_API_KEY`` is present.
