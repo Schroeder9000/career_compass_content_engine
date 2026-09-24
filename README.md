@@ -75,6 +75,10 @@ reason are retained in `.cache/blocked/` on the existing Modal cache volume.
 Existing alerts distinguish success, draft, blocked, skipped, and error outcomes.
 
 Current product claims live in `data/product_facts.json` inside the package.
+The owner's September 24, 2026 copy preference is included there: omit minimum-age
+and age-eligibility qualifiers from public article copy and metadata. This applies
+to research, writing, editing, evaluation, and publishing prompts; it does not
+change app eligibility or legal policy.
 Research, writing, editing, evaluation and metadata prompts share those facts.
 Historical examples are voice references, not current product documentation.
 Update the website copy and this facts file together when the offer changes.

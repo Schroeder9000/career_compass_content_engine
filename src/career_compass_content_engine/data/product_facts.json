@@ -1,9 +1,10 @@
 {
-  "version": "promotion-case-2026-09-23",
+  "version": "promotion-case-2026-09-24-copy-preference",
   "brand": "Career Compass",
   "product": "Promotion Case",
   "release_status": "available",
-  "audience": "Adults 18 and older in the United States; available for iPhone",
+  "audience": "Professionals in the United States preparing for a promotion or compensation conversation; available for iPhone",
+  "website_copy_rule": "Omit minimum-age and age-eligibility qualifiers from public website and blog copy, including titles, summaries, body text, calls to action, and metadata. Do not reintroduce them from legal pages, historical articles, or examples. This is an editorial preference and does not change app eligibility or privacy-policy rules. Use Available for iPhone in the United States when an availability line is relevant.",
   "price": "One-time US in-app purchase of $24.99 for one case per account; no subscription required for this purchase",
   "deliverables": ["Manager-facing Promotion Case PDF", "Separate private Conversation Guide PDF"],
   "journey": [
