@@ -6,6 +6,9 @@ PRODUCT_FACTS = json.loads((Path(__file__).parent / "data" / "product_facts.json
 
 
 def product_context() -> str:
-    return "\n\nCURRENT PRODUCT FACTS — override historical examples:\n" + json.dumps(
+    return ("\n\nCURRENT PRODUCT FACTS — accuracy reference only, not required copy. "
+            "These describe the app's audience, not the broader blog audience. "
+            "Do not insert product facts or a sales pitch when the article does not need them. "
+            "Override conflicting historical examples:\n") + json.dumps(
         PRODUCT_FACTS, ensure_ascii=False, indent=2
     )

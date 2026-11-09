@@ -7,6 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from typing import Optional
 
 from ..product_context import product_context
+from ..editorial_policy import article_context
 from .base import AgentResult, BaseAgent
 
 
@@ -26,7 +27,7 @@ Editing rules:
 - Improve on brand voice: be aspirational while also finding moments of comedy and highlighting the absurdities of Corporate America.
 - Remove any "AI-sounding" lines or generic summaries - replace with specific, opinionated takes.
 - Add emotional depth: name feelings explicitly (e.g., "the knot in your stomach when...", "the relief of finally...")
-- Natural Career Compass integration: weave it into the conclusion organically, not as a separate section
+- Preserve the assigned reader need. Remove forced product connections and sales pivots; no brand mention is required.
 
 Four specific failure modes to check and fix:
 1. OPENING HOOK: If the article opens with "Picture this: It's [day/time]..." or any stamped-scene
@@ -93,7 +94,7 @@ Revision instructions (apply ALL of these):
   with the same sentence count
 - Kill every cliché and replace it with a specific, vivid, opinionated sentence
 - You MAY restructure, reorder, or partially rewrite any section to fix the issues
-- Ensure there is a strong closing section that naturally integrates Career Compass as a solution, not a separate add-on
+- End with a strong, topic-specific insight and next step. Do not add a product mention to satisfy a supposed brand requirement.
 
 Return ONLY the revised Markdown.
 """
@@ -105,7 +106,7 @@ class EditingAgent(BaseAgent):
 
     llm: BaseChatModel
 
-    def refine(self, draft_markdown: str, feedback: Optional[str] = None) -> AgentResult:
+    def refine(self, draft_markdown: str, feedback: Optional[str] = None, *, editorial_brief: Optional[dict] = None) -> AgentResult:
         """
         Edit and refine a draft blog post.
         
@@ -134,7 +135,7 @@ class EditingAgent(BaseAgent):
         else:
             prompt = EDIT_TEMPLATE.format(draft=draft_cleaned)
         
-        result = self.run(prompt + product_context())
+        result = self.run(prompt + product_context() + article_context(editorial_brief))
         
         # Also strip from the result if the LLM adds them back
         if result.raw_response:

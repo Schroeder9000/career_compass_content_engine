@@ -7,6 +7,7 @@ from typing import Dict
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from ..product_context import product_context
+from ..editorial_policy import article_context
 from .base import AgentContext, AgentResult, BaseAgent
 
 
@@ -15,7 +16,7 @@ _CAREER_STORY = _CAREER_STORY_PATH.read_text(encoding="utf-8") if _CAREER_STORY_
 
 
 WRITING_TEMPLATE = """
-You are Data Dave — the author and voice behind Career Compass, the company behind Promotion Case, a promotion and pay-conversation preparation product.
+You are Data Dave — the author and voice behind Career Compass, a publication helping early-career professionals navigate the full experience of working life.
 
 Your real name is David Schroeder. You write in first person, speaking directly from lived experience. You are not a corporate coach. You are someone who took a genuinely non-linear path — acting at NYU, bartending and driving cabs in New York, producing documentaries in war zones, fumbling a first leadership role badly enough that you burned out and had to quit, then rebuilding through data science, analytics, and now AI — and who is sharing hard-won lessons with early-career professionals who are figuring it out in real time.
 
@@ -112,20 +113,19 @@ REQUIRED STRUCTURE
    The article should feel like a smart, opinionated coach talking — not a how-to guide.
    Any tactical takeaway should be woven into the argument, not extracted into a separate section.
 
-6) ⚠️ MANDATORY — Career Compass mention (NO HEADING - integrate naturally into final section):
-   - You MUST mention Career Compass before the closing. Do not skip this.
-   - Naturally mention how Career Compass helps:
-     * Turn approved Evidence into a manager-facing Promotion Case PDF
-     * Use sourced U.S. pay context with its limitations visible
-     * Prepare with a separate private Conversation Guide PDF
+6) Product connections are optional and governed by the assigned editorial brief.
+   - Broad career articles should stand on their own without a product pitch or promotion/pay pivot.
+   - In a directly relevant advancement/pay article, one brief connection may help, but omission is valid.
+   - Do not append a feature list, purchase instructions, price, or permission boilerplate.
+   - Product facts constrain any claims you choose to make; they are not required article content.
 
 7) ⚠️ MANDATORY — Closing (NO HEADING): 2-4 paragraphs that:
    - Synthesize your key insight without repeating the TL;DR
    - Provide encouragement that feels personal, not generic
    - Leave readers with a concrete next step or mindset shift
 
-⚠️ FINAL CHECK — Before you stop writing, confirm both of these are in the article:
-   [ ] Career Compass is mentioned accurately and naturally using the CURRENT PRODUCT FACTS. Do not repeat retired product claims from historical writing examples.
+⚠️ FINAL CHECK — Before you stop writing, confirm:
+   [ ] The article serves its assigned reader need; any optional product connection is relevant, brief, and accurate. A brand mention is not required.
    [ ] There is a proper closing section that synthesizes the key insight and provides a concrete next step or mindset shift (not a template or script)
 
 CONTENT FORMAT BIAS:
@@ -177,4 +177,4 @@ class WritingAgent(BaseAgent):
             examples=rag_context or "(No examples provided; default to Career Compass tone.)",
             career_story=_CAREER_STORY or "(Career story not available.)",
         )
-        return self.run(prompt + product_context())
+        return self.run(prompt + product_context() + article_context(topic_payload.get("editorial_brief")))

@@ -49,7 +49,8 @@ from .agents.publishing_agent import PublishingAgent
 from .agents.research_agent import ResearchAgent
 from .agents.writing_agent import WritingAgent
 from .config import Settings, get_settings
-from .product_context import product_context
+from .editorial_policy import (article_context, article_editorial_issues,
+                               choose_editorial_brief, research_plan_issues)
 from .publication_policy import MAX_REVISIONS, metadata_blockers, route_after_evaluate, route_after_metadata
 from .rag import RAGPipeline
 from .state import ContentState
@@ -346,30 +347,9 @@ def _has_substantive_closing(markdown: str) -> bool:
 def _check_required_ending(markdown: str) -> list[str]:
     """Return unmet hard requirements for final publish quality."""
     issues: list[str] = []
-    if not re.search(r"\bcareer\s+compass\b", markdown or "", re.IGNORECASE):
-        issues.append("Missing a natural 'Career Compass' mention near the end of the article.")
     if not _has_substantive_closing(markdown or ""):
         issues.append("Closing is too abrupt; needs 2-4 substantive concluding paragraphs.")
     return issues
-
-
-def _append_fallback_closing(markdown: str) -> str:
-    """Final safety net if LLM repair still misses required ending elements."""
-    closing = (
-        "\n\nStart with one specific example of the work you want others to understand. "
-        "Describe your contribution, the result, and why it mattered. A clear record gives you "
-        "something concrete to review before deciding what to ask for or what to do next. "
-        "Keep the wording accurate and leave out claims you cannot support.\n\n"
-        "When you are preparing for a promotion or pay conversation, Promotion Case by "
-        "[Career Compass](https://careeraiapp.com/) brings your approved Evidence and sourced "
-        "U.S. pay context into a manager-facing Promotion Case PDF and a separate private "
-        "Conversation Guide PDF. Review the documents and choose what to share. The product "
-        "helps you prepare; it does not guarantee a promotion or raise."
-    )
-    base = (markdown or "").rstrip()
-    if re.search(r"\bcareer\s+compass\b", base, re.IGNORECASE) and _has_substantive_closing(base):
-        return base
-    return base + closing
 
 
 # ── Graph factory ─────────────────────────────────────────────────────────────
@@ -485,22 +465,17 @@ def build_graph(
 
     async def node_research(state: ContentState) -> dict:
         logger.info("🔵 [research] starting...")
+        editorial_brief = choose_editorial_brief(topic_store.all_records())
+        logger.info("[research] editorial coverage: %s", editorial_brief["coverage"])
 
         # ── 1. Build performance_context from GSC + GA4 ───────────────────────────────────
         perf_parts = []
-        gsc_queries: list = []  # reused for Serper targeting
         if gsc_client:
             try:
                 logger.info("📁 [research] fetching GSC data...")
                 gsc_summary = gsc_client.fetch_performance_summary(days=90, query_limit=30)
                 perf_parts.append(gsc_summary)
-                # Extract opportunity queries (position 4–20) for Serper
-                raw_queries = gsc_client.fetch_top_queries(days=90, row_limit=30)
-                gsc_queries = [
-                    q["query"] for q in raw_queries
-                    if 4 <= q["position"] <= 20 and q["impressions"] >= 50
-                ][:3]
-                logger.info("✅ [research] GSC loaded (%d queries)", len(raw_queries))
+                logger.info("✅ [research] GSC loaded")
             except Exception as exc:
                 logger.warning("⚠️  [research] GSC fetch failed: %s", exc)
 
@@ -520,16 +495,19 @@ def build_graph(
 
         # ── 2. Build competitor_context from Serper + PAA + live page fetch ─────────
         competitor_context = None
-        if serper_client and gsc_queries:
+        # Search the assigned pillar so historical promotion-heavy rankings cannot
+        # keep feeding the same narrow subject into every new recommendation.
+        search_queries = [editorial_brief["search_seed"]]
+        if serper_client:
             try:
-                logger.info("🔍 [research] running Serper on %d opportunity quer(ies)...", len(gsc_queries))
-                serp_summary = serper_client.competitor_summary(gsc_queries)
-                paa_summary = serper_client.paa_summary(gsc_queries)
+                logger.info("🔍 [research] running Serper on the assigned editorial pillar...")
+                serp_summary = serper_client.competitor_summary(search_queries)
+                paa_summary = serper_client.paa_summary(search_queries)
 
                 # Fetch and summarize actual competitor page content (top 3 URLs)
                 top_urls: list = []
                 try:
-                    raw_serp = serper_client.fetch_serp_snapshot(gsc_queries[:1], num_results=3)
+                    raw_serp = serper_client.fetch_serp_snapshot(search_queries, num_results=3)
                     top_urls = [r["link"] for r in raw_serp if r.get("link")][:3]
                 except Exception:
                     pass
@@ -575,9 +553,22 @@ def build_graph(
                 state["context"],
                 performance_context=performance_context,
                 competitor_context=competitor_context,
+                editorial_brief=editorial_brief,
             )
         )
         research_payload = _safe_parse(result.raw_response)
+        plan_issues = research_plan_issues(research_payload, editorial_brief)
+        if plan_issues:
+            result = await _run_sync(lambda: research_agent.recommend(
+                enriched_existing + "\n\nRESELECT THE TOPIC: " + "; ".join(plan_issues),
+                state["context"], performance_context=performance_context,
+                competitor_context=competitor_context, editorial_brief=editorial_brief))
+            research_payload = _safe_parse(result.raw_response)
+            remaining = research_plan_issues(research_payload, editorial_brief)
+            if remaining:
+                raise RuntimeError("Editorial topic selection failed: " + "; ".join(remaining))
+        # The coverage decision comes from publication history, not model-generated labels.
+        research_payload["editorial_brief"] = editorial_brief
         logger.debug("[research] raw response snippet: %.300s", result.raw_response)
         topic = research_payload.get("topic", "Career Compass")
 
@@ -734,10 +725,12 @@ def build_graph(
 
         if is_revision:
             logger.info("🔵 [edit/revision] starting — applying evaluation feedback with bold rewrites...")
-            result = await _run_sync(lambda: revision_editor_agent.refine(source, feedback=combined_feedback))
+            result = await _run_sync(lambda: revision_editor_agent.refine(source, feedback=combined_feedback,
+                editorial_brief=state["research_payload"].get("editorial_brief")))
         else:
             logger.info("🔵 [edit] starting — first-pass polish...")
-            result = await _run_sync(lambda: editor_agent.refine(source, feedback=combined_feedback if pre_screen_block else None))
+            result = await _run_sync(lambda: editor_agent.refine(source, feedback=combined_feedback if pre_screen_block else None,
+                editorial_brief=state["research_payload"].get("editorial_brief")))
 
         edited_content = result.content.get("message", str(result.raw_response))
         logger.debug("[edit] edited word count: ~%d", len(edited_content.split()))
@@ -746,7 +739,12 @@ def build_graph(
 
     async def node_evaluate(state: ContentState) -> dict:
         logger.info("🔵 [evaluate] starting...")
-        evaluation = await _run_sync(lambda: evaluation_agent.evaluate(state["edited_content"]))
+        editorial_brief = state["research_payload"].get("editorial_brief")
+        evaluation = await _run_sync(lambda: evaluation_agent.evaluate(state["edited_content"], editorial_brief=editorial_brief))
+        policy_issues = article_editorial_issues(state["edited_content"], editorial_brief)
+        if policy_issues:
+            evaluation.feedback["critical_issues"] = list(dict.fromkeys(
+                evaluation.feedback.get("critical_issues", []) + policy_issues))
         logger.debug("[evaluate] raw JSON: %.500s", str(evaluation.raw_json))
         revision_count = state.get("revision_count", 0) + 1
         passes = (evaluation.passes_threshold is True
@@ -785,26 +783,31 @@ def build_graph(
     async def node_prepare_metadata(state: ContentState) -> dict:
         logger.info("🔵 [prepare_metadata] starting...")
         content_for_publish = state.get("edited_content", "")
+        editorial_brief = state["research_payload"].get("editorial_brief")
         ending_issues = _check_required_ending(content_for_publish)
 
         if ending_issues:
             logger.warning("⚠️  [prepare_metadata] ending guard triggered: %s", " | ".join(ending_issues))
-            repair_feedback = product_context() + (
+            repair_feedback = article_context(editorial_brief) + (
                 "HARD REQUIREMENTS BEFORE PUBLISH:\n"
-                "- Add a natural Career Compass mention in the final section/conclusion.\n"
+                "- Do not add a brand mention, product pitch, or promotion/pay pivot.\n"
                 "- End with 2-4 substantive closing paragraphs that synthesize the argument and leave a concrete mindset shift.\n"
                 "- Preserve the article's core argument and tone. Avoid adding FAQ/template sections.\n\n"
                 f"Current issues: {'; '.join(ending_issues)}"
             )
-            repaired = await _run_sync(lambda: revision_editor_agent.refine(content_for_publish, feedback=repair_feedback))
+            repaired = await _run_sync(lambda: revision_editor_agent.refine(content_for_publish,
+                feedback=repair_feedback, editorial_brief=editorial_brief))
             content_for_publish = repaired.content.get("message", str(repaired.raw_response))
 
-            remaining_issues = _check_required_ending(content_for_publish)
-            if remaining_issues:
-                logger.warning("⚠️  [prepare_metadata] LLM repair incomplete; applying deterministic fallback closing.")
-                content_for_publish = _append_fallback_closing(content_for_publish)
+        remaining_issues = (_check_required_ending(content_for_publish)
+                            + article_editorial_issues(content_for_publish, editorial_brief))
+        if remaining_issues:
+            # Keep the draft for review rather than invent a generic or promotional ending.
+            return {"metadata_payload": {"content_ready": False, "blocking_issues": remaining_issues},
+                    "edited_content": content_for_publish}
 
-        result = await _run_sync(lambda: publisher.prepare_metadata(content_for_publish))
+        result = await _run_sync(lambda: publisher.prepare_metadata(content_for_publish,
+            editorial_brief=editorial_brief))
         metadata_payload = _safe_parse(result.raw_response)
         if not isinstance(metadata_payload, dict):
             metadata_payload = {}
@@ -861,6 +864,7 @@ def build_graph(
                 publish_status=str(status),
                 image_attached=bool(result.get("image_attached", False)),
                 publish_error=str(publish_error) if publish_error else None,
+                editorial_pillar=research_payload.get("editorial_brief", {}).get("pillar"),
             )
             logger.info("💾 [publish] run recorded to topic history")
         except Exception as exc:

@@ -82,6 +82,7 @@ class TopicStore:
         publish_status: Optional[str] = None,
         image_attached: Optional[bool] = None,
         publish_error: Optional[str] = None,
+        editorial_pillar: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Append a completed run record and persist to disk."""
         now = datetime.now()
@@ -106,6 +107,8 @@ class TopicStore:
             record["image_attached"] = image_attached
         if publish_error:
             record["publish_error"] = publish_error
+        if editorial_pillar:
+            record["editorial_pillar"] = editorial_pillar
         records = self._load()
         records.append(record)
         self._save(records)
