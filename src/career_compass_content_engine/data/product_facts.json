@@ -1,9 +1,10 @@
 {
-  "version": "promotion-case-2026-09-24-copy-preference",
+  "version": "2026-11-09-audience-first-editorial-policy",
   "brand": "Career Compass",
   "product": "Promotion Case",
   "release_status": "available",
-  "audience": "Professionals in the United States preparing for a promotion or compensation conversation; available for iPhone",
+  "product_audience": "Professionals in the United States preparing for a promotion or compensation conversation; available for iPhone",
+  "editorial_audience": "Early-career professionals navigating first jobs, workplace relationships, skills, confidence, sustainable work, career choices, job search, workplace change, and advancement",
   "website_copy_rule": "Omit minimum-age and age-eligibility qualifiers from public website and blog copy, including titles, summaries, body text, calls to action, and metadata. Do not reintroduce them from legal pages, historical articles, or examples. This is an editorial preference and does not change app eligibility or privacy-policy rules. Use Available for iPhone in the United States when an availability line is relevant.",
   "price": "One-time US in-app purchase of $24.99 for one case per account; no subscription required for this purchase",
   "deliverables": ["Manager-facing Promotion Case PDF", "Separate private Conversation Guide PDF"],
@@ -25,5 +26,5 @@
     "privacy": "https://careeraiapp.com/privacy",
     "support": "https://careeraiapp.com/contact"
   },
-  "editorial_rule": "Use a brief relevant product connection, not a forced sales pitch. Historical articles and voice examples are not authoritative product facts. Link only to known live destinations; product/help/methodology routes are still being staged. Do not fabricate customer stories, outcomes, source citations, or the author's personal experience. Clearly label hypothetical examples."
+  "editorial_rule": "No brand mention or product CTA is required. Broad career articles should provide useful advice without a product pitch. In directly relevant advancement or pay articles, a product connection is optional and limited to one short paragraph of one or two sentences, at most 60 words. These facts constrain claims, not topic selection, and should not be copied wholesale into articles. Historical examples are not authoritative product facts. Link only to known live destinations. Do not fabricate customer stories, outcomes, citations, or the author's personal experience. Clearly label hypothetical examples."
 }

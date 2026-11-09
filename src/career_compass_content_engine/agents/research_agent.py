@@ -6,13 +6,13 @@ from typing import List, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 import json
 
-from ..product_context import product_context
+from ..editorial_policy import article_context
 from .base import AgentContext, AgentResult, BaseAgent
 
 
 RESEARCH_TEMPLATE = """
 You are the Research, SEO, and Answer Engine Optimization (AEO) strategist for Career Compass,
-the company behind Promotion Case, a promotion and pay-conversation preparation product.
+a publication serving the full range of early-career needs and workplace experiences.
 
 Your job is to recommend the *next* blog post topic that maximizes:
 1) Traditional SEO (search intent, long-tail capture, internal linking)
@@ -138,6 +138,7 @@ class ResearchAgent(BaseAgent):
         context: AgentContext,
         performance_context: Optional[str] = None,
         competitor_context: Optional[str] = None,
+        editorial_brief: Optional[dict] = None,
     ) -> AgentResult:
         prompt = RESEARCH_TEMPLATE.format(
             existing_content=existing_content or "No prior content provided.",
@@ -145,7 +146,7 @@ class ResearchAgent(BaseAgent):
             performance_context=performance_context or "No GSC/GA performance data provided.",
             competitor_context=competitor_context or "No SERP competitive data provided.",
         )
-        prompt += product_context()
+        prompt += article_context(editorial_brief)
         # Invoke model and parse JSON output robustly
         try:
             response = self.llm.invoke(prompt)

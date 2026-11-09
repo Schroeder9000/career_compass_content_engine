@@ -21,6 +21,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from ..config import Settings
 from ..product_context import product_context
+from ..editorial_policy import article_context
 from ..publication_policy import metadata_blockers
 from .base import AgentResult, BaseAgent
 
@@ -303,7 +304,7 @@ class WebflowCMS:
 
 PUBLISH_TEMPLATE = """
 You are the senior Publishing & SEO QA agent for Career Compass,
-the company behind Promotion Case, a focused promotion and pay-conversation preparation product.
+a publication serving early-career professionals across workplace relationships, learning, confidence, sustainable work, career decisions, and advancement.
 
 You have final authority on whether a blog post is ready to be published.
 
@@ -324,7 +325,7 @@ Full blog article content:
 ### BRAND VOICE & QUALITY BAR
 Career Compass content must be:
 - Practical, thoughtful, and grounded (no hustle porn, no generic motivation)
-- Written for early-career professionals (ages ~22–35)
+- Written for early-career professionals navigating varied workplace needs
 - Action-oriented with real takeaways
 - Clear and skimmable (short paragraphs, strong structure)
 - Credible and calm — not salesy or preachy
@@ -395,8 +396,9 @@ class PublishingAgent(BaseAgent):
     llm: BaseChatModel
     settings: Settings
 
-    def prepare_metadata(self, blog_markdown: str) -> AgentResult:
-        prompt = f"{PUBLISH_TEMPLATE}{product_context()}\n\nContent to publish:\n{blog_markdown}"
+    def prepare_metadata(self, blog_markdown: str, *, editorial_brief: dict | None = None) -> AgentResult:
+        prompt = (PUBLISH_TEMPLATE.format(article=blog_markdown) + product_context()
+                  + article_context(editorial_brief))
         return self.run(prompt)
 
     def upload_to_webflow(

@@ -9,6 +9,7 @@ from typing import Dict, List
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from ..product_context import product_context
+from ..editorial_policy import article_context
 from .base import BaseAgent
 
 
@@ -137,7 +138,7 @@ class EvaluationAgent(BaseAgent):
     llm: BaseChatModel
     score_threshold: float = 8.7
 
-    def evaluate(self, content: str) -> EvaluationResult:
+    def evaluate(self, content: str, *, editorial_brief: dict | None = None) -> EvaluationResult:
         """
         Evaluate content against quality standards.
         
@@ -147,7 +148,8 @@ class EvaluationAgent(BaseAgent):
         Returns:
             EvaluationResult with scores, feedback, and recommendation
         """
-        prompt = EVALUATION_TEMPLATE.format(content=content, score_threshold=self.score_threshold) + product_context()
+        prompt = (EVALUATION_TEMPLATE.format(content=content, score_threshold=self.score_threshold)
+                  + product_context() + article_context(editorial_brief))
         result = self.run(prompt)
         
         # Parse the JSON response

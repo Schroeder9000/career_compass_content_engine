@@ -79,9 +79,32 @@ The owner's September 24, 2026 copy preference is included there: omit minimum-a
 and age-eligibility qualifiers from public article copy and metadata. This applies
 to research, writing, editing, evaluation, and publishing prompts; it does not
 change app eligibility or legal policy.
-Research, writing, editing, evaluation and metadata prompts share those facts.
+Writing, editing, evaluation and metadata prompts share those facts as an
+accuracy reference. Research uses the broader editorial mission below.
 Historical examples are voice references, not current product documentation.
 Update the website copy and this facts file together when the offer changes.
+
+## Editorial coverage
+
+The blog serves early-career professionals across first jobs and transitions,
+communication and workplace relationships, skills and learning, work habits and
+boundaries, confidence and belonging, career direction and job search, workplace
+change and AI literacy, and advancement and pay. `editorial_policy.py` chooses an
+under-covered pillar from successful publication history and records it on each
+new run. Drafts, failed runs, and duplicate publication records do not consume a
+coverage slot. Legacy promotion/pay titles are recognized during the transition.
+Advancement/pay is capped at two of the next rolling ten publications and cannot
+run consecutively. Search queries follow the assigned pillar.
+
+Brand mentions, app links and sales CTAs are optional. Broad career articles stand
+on their own; a directly relevant advancement/pay article may include at most one
+short product paragraph of one or two sentences, no more than 60 words. Product
+facts are never a checklist to insert. The editorial brief follows the article
+through writing, editing, evaluation and metadata. Deterministic checks reject
+promotion/pay topic pivots and product pitches in broad articles. Failed closing
+repairs block publication and preserve the draft instead of appending a sales
+paragraph. The weekday schedule, current model, image optimization and publication
+safeguards remain unchanged.
 
 ## Google reporting credentials
 
@@ -123,6 +146,13 @@ clear that field so the image falls back safely to the new CMS source URL.
 
 Run `python -m pytest`. Tests mock network/model calls and exercise the compiled
 workflow, rejection paths, preserved CMS fields, and item-only/draft publication.
+
+`PYTHONPATH=src modal run scripts/verify_editorial.py --output /tmp/editorial-preview.json`
+runs the tests in Modal, reads recent history, requests four topic proposals and
+previews one broad article through writing, editing, evaluation and metadata.
+It uses the existing OpenAI secret without exposing it, does not publish or write
+to the CMS, and verifies that production topic history is unchanged. Model
+evaluation and metadata results are included in the local receipt for review.
 
 `PYTHONPATH=src modal run scripts/verify_launch.py` runs tests in the Modal image
 and creates one clearly named, unpublished launch verification draft. It reuses

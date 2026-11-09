@@ -18,6 +18,16 @@ METADATA = {"title": "Prepare a clear case", "slug": "prepare-a-clear-case",
             "summary": "Gather clear examples of your contribution and results before your next career conversation.",
             "content_ready": True, "blocking_issues": []}
 BODY = "# Prepare a clear case\n\n## Start with evidence\n\nWrite down the result and your contribution."
+COMPLETE_ENDING = (
+    "\n\nBefore your next meeting, write down the specific decision you need help making. "
+    "Separate what you know from what you are assuming, and choose one question that "
+    "would resolve the uncertainty. Bring that question to someone who understands the "
+    "work instead of trying to solve every unfamiliar problem alone.\n\n"
+    "Getting comfortable in a new role takes repeated conversations, not one flawless "
+    "performance. Notice which questions become easier to answer over the next week, "
+    "and which still need another person's perspective. That gives you a practical way "
+    "to see your learning without measuring yourself against an imaginary perfect colleague."
+)
 SCHEMA = [{"slug": slug, "type": kind, "isRequired": kind == "Image"} for slug, kind in {
     "name": "PlainText", "slug": "PlainText", "summary": "PlainText",
     "blog-post-richt-text": "RichText", "blog-post-featured-image-photo": "Image",
@@ -190,7 +200,7 @@ def test_compiled_graph_gates_real_publication_route(monkeypatch, tmp_path, scor
     from career_compass_content_engine import graph as module
     monkeypatch.setenv("TOPIC_HISTORY_PATH", str(tmp_path / "history.json"))
     monkeypatch.setattr("career_compass_content_engine.supervisor.build_llm", lambda *args: MagicMock())
-    draft = module._append_fallback_closing(BODY)
+    draft = BODY + COMPLETE_ENDING
     answer = lambda content: AgentResult(content={"message": content}, raw_response=content)
     monkeypatch.setattr(module.ResearchAgent, "recommend", lambda *args, **kwargs: answer(
         json.dumps({"topic": "evidence", "suggested_title": METADATA["title"]})))
