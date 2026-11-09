@@ -96,6 +96,31 @@ Missing reporting inputs are reported as unavailable, not successful data loads.
 
 ## Verification
 
+### Image delivery
+
+Generated artwork is converted to WebP at quality 90 (minimum 86), capped at
+1600 pixels wide and 1 MB. Pillow with WebP support is required. Failed decoding,
+compression, schema validation, or uploads stop publication; original oversized
+PNGs are never used as a fallback. Alpha, aspect ratio, orientation, and color
+profiles are preserved, and smaller sources are never enlarged.
+
+The publisher creates 500, 800, and 1080 pixel variants where the source permits,
+plus the full image. The thumbnail field uses the 800 pixel version. Webflow must
+have optional PlainText fields `featured-image-srcset` and
+`thumbnail-image-srcset`; the publisher fills these with hosted URLs and width
+descriptors. Optional Number fields `featured-image-width`,
+`featured-image-height`, `thumbnail-image-width`, and `thumbnail-image-height`
+store the corresponding dimensions so templates can reserve space before load.
+The article, blog, category, and author templates use CMS-bound
+image embeds with explicit `srcset` and `sizes`, because API-uploaded images do
+not automatically receive responsive variants in the published CMS markup.
+Article hero images load eagerly at high priority; article cards load lazily.
+
+For a manually replaced CMS image, update its matching srcset field as well, or
+clear that field so the image falls back safely to the new CMS source URL.
+
+### Automated checks
+
 Run `python -m pytest`. Tests mock network/model calls and exercise the compiled
 workflow, rejection paths, preserved CMS fields, and item-only/draft publication.
 
