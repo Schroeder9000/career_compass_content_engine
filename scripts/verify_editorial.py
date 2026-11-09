@@ -34,7 +34,7 @@ def preview(previous: dict | None = None):
     from career_compass_content_engine.agents.publishing_agent import PublishingAgent
     from career_compass_content_engine.config import get_settings
     from career_compass_content_engine.editorial_policy import (
-        brief_for, choose_editorial_brief, published_history,
+        article_context, brief_for, choose_editorial_brief, published_history,
         research_plan_issues, article_editorial_issues,
     )
     from career_compass_content_engine.graph import _safe_parse, _check_required_ending
@@ -81,7 +81,7 @@ def preview(previous: dict | None = None):
         editor = EditingAgent(llm=build_llm(settings, "editing"), name="Preview editor",
                               system_prompt="Polish drafts to publication quality.")
         article = editor.refine(draft, editorial_brief=next_brief).raw_response
-    issues = article_editorial_issues(article, next_brief) + _check_required_ending(article)
+    issues = article_editorial_issues(article, next_brief)
     assert not issues, issues
     print(f"Independent article checked: {len(article.split())} words; no forced product pitch", flush=True)
     evaluator = EvaluationAgent(llm=build_llm(settings, "evaluation"), name="Preview evaluator",
@@ -101,14 +101,28 @@ def preview(previous: dict | None = None):
             break
         article = revision.refine(article, feedback=evaluator.format_feedback_for_editor(evaluation),
                                   editorial_brief=next_brief).raw_response
-        issues = article_editorial_issues(article, next_brief) + _check_required_ending(article)
+        issues = article_editorial_issues(article, next_brief)
         assert not issues, issues
         evaluation = evaluator.evaluate(article, editorial_brief=next_brief)
         evaluations.append(evaluation.raw_json)
         print(f"Revision checked: score {evaluation.average_score:.2f}; passed {evaluation.passes_threshold}", flush=True)
-    publisher = PublishingAgent(llm=build_llm(settings, "metadata"), name="Preview metadata QA",
-                                system_prompt="Check metadata and publication readiness.", settings=settings)
-    metadata = _safe_parse(publisher.prepare_metadata(article, editorial_brief=next_brief).raw_response)
+    # Match the production order: editorial revisions first, then a single
+    # final closing repair if quality has passed, then metadata approval.
+    if evaluation.passes_threshold and _check_required_ending(article):
+        feedback = article_context(next_brief) + (
+            "HARD REQUIREMENTS BEFORE PUBLISH:\n"
+            "- Do not add a brand mention, product pitch, or promotion/pay pivot.\n"
+            "- End with 2-4 substantive closing paragraphs that synthesize the argument and leave a concrete mindset shift.\n"
+            "- Preserve the article's core argument and tone. Avoid adding FAQ/template sections.\n\n"
+            + "Current issues: " + "; ".join(_check_required_ending(article)))
+        article = revision.refine(article, feedback=feedback, editorial_brief=next_brief).raw_response
+    issues = article_editorial_issues(article, next_brief) + _check_required_ending(article)
+    if evaluation.passes_threshold and not issues:
+        publisher = PublishingAgent(llm=build_llm(settings, "metadata"), name="Preview metadata QA",
+                                    system_prompt="Check metadata and publication readiness.", settings=settings)
+        metadata = _safe_parse(publisher.prepare_metadata(article, editorial_brief=next_brief).raw_response)
+    else:
+        metadata = {"content_ready": False, "blocking_issues": issues or evaluation.feedback["critical_issues"]}
     metadata_issues = metadata_blockers(metadata)
     assert (history_path.read_bytes() if history_path.exists() else None) == before, "Preview changed history"
     return {"checked_at": datetime.now(timezone.utc).isoformat(), "next_brief": next_brief,
