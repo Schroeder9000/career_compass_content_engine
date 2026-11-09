@@ -23,14 +23,14 @@ def verify_tests():
 
 @app.function(image=image, secrets=[modal.Secret.from_name("careeer_compass_langchain_content_engine")],
               volumes={"/app/.cache": cache_volume}, timeout=900)
-def preview():
+def preview(previous: dict | None = None):
     from concurrent.futures import ThreadPoolExecutor
     from datetime import datetime, timezone
     from career_compass_content_engine.agents.base import AgentContext
     from career_compass_content_engine.agents.research_agent import ResearchAgent
     from career_compass_content_engine.agents.writing_agent import WritingAgent
     from career_compass_content_engine.agents.editing_agent import EditingAgent
-    from career_compass_content_engine.agents.evaluation_agent import EvaluationAgent
+    from career_compass_content_engine.agents.evaluation_agent import EvaluationAgent, EvaluationResult
     from career_compass_content_engine.agents.publishing_agent import PublishingAgent
     from career_compass_content_engine.config import get_settings
     from career_compass_content_engine.editorial_policy import (
@@ -67,22 +67,45 @@ def preview():
         plan["editorial_brief"] = brief
         return plan
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        proposals = list(pool.map(recommend, briefs))
-    print("Topic proposals checked: " + "; ".join(p["suggested_title"] for p in proposals), flush=True)
-    plan = proposals[0]
-    writer = WritingAgent(llm=build_llm(settings, "writing"), name="Preview writer",
-                          system_prompt="Craft useful, distinctive Career Compass articles.")
-    draft = writer.draft(plan, "", context).raw_response
-    editor = EditingAgent(llm=build_llm(settings, "editing"), name="Preview editor",
-                          system_prompt="Polish drafts to publication quality.")
-    article = editor.refine(draft, editorial_brief=next_brief).raw_response
+    if previous:
+        assert previous["next_brief"] == next_brief, "Publication history changed; start a fresh preview"
+        proposals, article = previous["proposals"], previous["article"]
+    else:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            proposals = list(pool.map(recommend, briefs))
+        print("Topic proposals checked: " + "; ".join(p["suggested_title"] for p in proposals), flush=True)
+        plan = proposals[0]
+        writer = WritingAgent(llm=build_llm(settings, "writing"), name="Preview writer",
+                              system_prompt="Craft useful, distinctive Career Compass articles.")
+        draft = writer.draft(plan, "", context).raw_response
+        editor = EditingAgent(llm=build_llm(settings, "editing"), name="Preview editor",
+                              system_prompt="Polish drafts to publication quality.")
+        article = editor.refine(draft, editorial_brief=next_brief).raw_response
     issues = article_editorial_issues(article, next_brief) + _check_required_ending(article)
     assert not issues, issues
     print(f"Independent article checked: {len(article.split())} words; no forced product pitch", flush=True)
     evaluator = EvaluationAgent(llm=build_llm(settings, "evaluation"), name="Preview evaluator",
                                 system_prompt="Evaluate publication quality.")
-    evaluation = evaluator.evaluate(article, editorial_brief=next_brief)
+    if previous:
+        raw = previous["evaluation"]
+        evaluation = EvaluationResult(scores=raw["scores"], average_score=raw["average_score"],
+            passes_threshold=raw["passes_threshold"], feedback=raw["feedback"],
+            recommended_action=raw["recommended_action"], raw_json=raw)
+    else:
+        evaluation = evaluator.evaluate(article, editorial_brief=next_brief)
+    evaluations = [evaluation.raw_json]
+    revision = EditingAgent(llm=build_llm(settings, "revision"), name="Preview revision editor",
+                            system_prompt="Make substantive revisions to resolve the specific quality issues.")
+    for _ in range(2):
+        if evaluation.passes_threshold:
+            break
+        article = revision.refine(article, feedback=evaluator.format_feedback_for_editor(evaluation),
+                                  editorial_brief=next_brief).raw_response
+        issues = article_editorial_issues(article, next_brief) + _check_required_ending(article)
+        assert not issues, issues
+        evaluation = evaluator.evaluate(article, editorial_brief=next_brief)
+        evaluations.append(evaluation.raw_json)
+        print(f"Revision checked: score {evaluation.average_score:.2f}; passed {evaluation.passes_threshold}", flush=True)
     publisher = PublishingAgent(llm=build_llm(settings, "metadata"), name="Preview metadata QA",
                                 system_prompt="Check metadata and publication readiness.", settings=settings)
     metadata = _safe_parse(publisher.prepare_metadata(article, editorial_brief=next_brief).raw_response)
@@ -91,15 +114,17 @@ def preview():
     return {"checked_at": datetime.now(timezone.utc).isoformat(), "next_brief": next_brief,
             "published_history_count": len(published_history(history)), "proposals": proposals,
             "article": article, "word_count": len(article.split()), "editorial_issues": issues,
-            "evaluation": evaluation.raw_json, "metadata": metadata, "metadata_issues": metadata_issues,
+            "evaluation": evaluation.raw_json, "evaluations": evaluations,
+            "metadata": metadata, "metadata_issues": metadata_issues,
             "history_unchanged": True, "cms_writes": False, "published": False}
 
 
 @app.local_entrypoint()
-def main(output: str = "/tmp/career-compass-editorial-preview.json"):
+def main(output: str = "/tmp/career-compass-editorial-preview.json", resume: str = ""):
     tests = verify_tests.remote()
     print(tests["output"])
-    result = preview.remote()
+    previous = json.loads(Path(resume).read_text()) if resume else None
+    result = preview.remote(previous)
     result["test_result"] = tests
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
