@@ -61,6 +61,58 @@ def test_item_boundary_and_preserved_cms_fields(monkeypatch, mode, expected):
     assert not hasattr(WebflowCMS, "publish_site")
 
 
+def test_generated_image_publishes_responsive_webp_and_preserves_item_boundary(monkeypatch, tmp_path):
+    from PIL import Image
+    agent, cms = publisher(monkeypatch)
+    cms.get_collection_fields.return_value.extend([
+        {"slug": key, "type": "PlainText"}
+        for key in ("featured-image-srcset", "thumbnail-image-srcset")])
+    cms.get_collection_fields.return_value.extend([
+        {"slug": f"{prefix}-image-{dimension}", "type": "Number"}
+        for prefix in ("featured", "thumbnail") for dimension in ("width", "height")])
+    source = tmp_path / "generated.png"
+    Image.new("RGB", (1536, 1024), "orange").save(source)
+    cms.upload_asset.side_effect = lambda site, path: {"url": "https://cdn.example.com/" + path.name}
+    result = agent.upload_to_webflow(METADATA, BODY, image_file_path=str(source))
+    assert result["status"] == "success"
+    assert cms.upload_asset.call_count == 4
+    args = cms.create_draft_blog_item.call_args.kwargs
+    assert args["main_image_url"]["url"].endswith("generated.webp")
+    assert args["thumb_image_url"]["url"].endswith("-800w.webp")
+    assert "1536w" in args["extra_field_data"]["featured-image-srcset"]
+    assert args["extra_field_data"]["featured-image-srcset"] == args["extra_field_data"]["thumbnail-image-srcset"]
+    assert args["extra_field_data"]["featured-image-width"] == 1536
+    assert args["extra_field_data"]["featured-image-height"] == 1024
+    assert args["extra_field_data"]["thumbnail-image-width"] == 800
+    assert args["extra_field_data"]["thumbnail-image-height"] == 533
+    cms.publish_items.assert_called_once_with("collection", ["new-item"])
+
+
+def test_missing_responsive_schema_prevents_image_upload_and_publication(monkeypatch, tmp_path):
+    agent, cms = publisher(monkeypatch)
+    result = agent.upload_to_webflow(METADATA, BODY, image_file_path=str(tmp_path / "generated.png"))
+    assert result["status"] == "error"
+    cms.upload_asset.assert_not_called()
+    cms.create_draft_blog_item.assert_not_called()
+    cms.publish_items.assert_not_called()
+
+
+def test_webp_upload_mime_is_explicit_even_without_os_mime_database(monkeypatch, tmp_path):
+    source = tmp_path / "optimized.webp"
+    source.write_bytes(b"synthetic upload fixture")
+    cms = WebflowCMS("test")
+    cms.create_asset_metadata = MagicMock(return_value={
+        "uploadUrl": "https://upload.example.com/",
+        "uploadDetails": {"key": "asset"},
+        "hostedUrl": "https://s3.amazonaws.com/webflow-prod-assets/site/optimized.webp"})
+    post = MagicMock()
+    monkeypatch.setattr("career_compass_content_engine.agents.publishing_agent.requests.post", post)
+    monkeypatch.setattr("career_compass_content_engine.agents.publishing_agent.mimetypes.guess_type", lambda p: (None, None))
+    result = cms.upload_asset("site", source)
+    assert post.call_args.kwargs["files"]["file"][2] == "image/webp"
+    assert result["url"] == "https://cdn.prod.website-files.com/site/optimized.webp"
+
+
 @pytest.mark.parametrize("update", [
     {"content_ready": False}, {"content_ready": "true"}, {"content_ready": None},
     {"blocking_issues": ["Unsupported product claim"]}, {"blocking_issues": None},

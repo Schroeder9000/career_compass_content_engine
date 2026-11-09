@@ -15,11 +15,7 @@ try:
 except Exception:
     _OPENAI_AVAILABLE = False
 
-try:
-    from PIL import Image
-    _PIL_AVAILABLE = True
-except Exception:
-    _PIL_AVAILABLE = False
+from ..image_optimization import optimize_image
 
 
 class ImageGenerator:
@@ -27,11 +23,11 @@ class ImageGenerator:
 
     Behavior:
     - If `openai` package is available and `OPENAI_API_KEY` is set, attempt to use OpenAI Images API.
-    - Otherwise fall back to downloading a placeholder image.
-    - Optionally optimize (resize/compress) with Pillow when available.
+    - Require an image provider; never publish placeholder images.
+    - Require high-quality, size-checked WebP output before publishing.
     """
 
-    def __init__(self, out_dir: str = ".cache/images", max_width: int = 2400, jpeg_quality: int = 90) -> None:
+    def __init__(self, out_dir: str = ".cache/images", max_width: int = 1600, jpeg_quality: int = 90) -> None:
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.max_width = max_width
@@ -95,25 +91,7 @@ class ImageGenerator:
         raise RuntimeError(f"Failed to download image from {url} after 3 attempts: {last_exc}")
 
     def _optimize_image(self, path: Path) -> Path:
-        if not _PIL_AVAILABLE:
-            return path
-        try:
-            with Image.open(path) as im:
-                w, h = im.size
-                if w > self.max_width:
-                    new_h = int(self.max_width * h / w)
-                    im = im.resize((self.max_width, new_h), Image.LANCZOS)
-                # Convert PNG to optimized PNG or save as JPEG if originally large
-                if im.mode in ("RGBA", "LA"):
-                    # keep as PNG for transparency
-                    im.save(path, optimize=True)
-                else:
-                    im = im.convert("RGB")
-                    im.save(path, format="JPEG", quality=self.jpeg_quality, optimize=True)
-        except Exception:
-            # If optimization fails, return original
-            return path
-        return path
+        return optimize_image(path, max_width=self.max_width).path
 
     def generate(self, prompt: str, out_name: Optional[str] = None, size: str = "1792x1024") -> Path:
         out_name = out_name or f"img_{abs(hash(prompt)) % (10**8)}.png"

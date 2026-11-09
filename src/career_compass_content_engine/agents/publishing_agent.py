@@ -101,7 +101,11 @@ class WebflowCMS:
     @staticmethod
     def _asset_hosted_url(metadata: Dict[str, Any]) -> Optional[str]:
         """Return the full CDN/S3 URL that Webflow can resolve for CMS image fields."""
-        return metadata.get("hostedUrl") or metadata.get("assetUrl") or None
+        url = metadata.get("assetUrl") or metadata.get("hostedUrl")
+        if url and url.startswith("https://s3.amazonaws.com/webflow-prod-assets/"):
+            url = url.replace("https://s3.amazonaws.com/webflow-prod-assets/",
+                              "https://cdn.prod.website-files.com/", 1)
+        return url or None
 
     def upload_asset(self, site_id: str, file_path: Path) -> Optional[Dict[str, str]]:
         metadata = self.create_asset_metadata(site_id, file_path)
@@ -120,7 +124,8 @@ class WebflowCMS:
             form_data = upload_details.get("fields", {})
         else:
             form_data = upload_details or {}
-        mime_type, _ = mimetypes.guess_type(file_path)
+        # Slim Modal images may lack the OS MIME database entry for WebP.
+        mime_type = "image/webp" if file_path.suffix.lower() == ".webp" else mimetypes.guess_type(file_path)[0]
         mime_type = mime_type or "application/octet-stream"
 
         try:
@@ -447,12 +452,24 @@ class PublishingAgent(BaseAgent):
                     "webflow_item_id": existing.get("id"), "slug": slug}
 
         hosted_image = image_url
+        responsive = None
         if not hosted_image and image_file_path:
             try:
-                hosted_image = cms.upload_asset(self.settings.webflow_site_id, Path(image_file_path))
+                from ..image_optimization import upload_responsive_images
+                for key in ('featured-image-srcset', 'thumbnail-image-srcset'):
+                    if fields.get(key, {}).get('type') != 'PlainText':
+                        raise ValueError(f'Responsive image CMS field is missing: {key}')
+                for prefix in ('featured', 'thumbnail'):
+                    for dimension in ('width', 'height'):
+                        key = f'{prefix}-image-{dimension}'
+                        if fields.get(key, {}).get('type') != 'Number':
+                            raise ValueError(f'Responsive image CMS field is missing: {key}')
+                responsive = upload_responsive_images(Path(image_file_path),
+                    lambda path: cms.upload_asset(self.settings.webflow_site_id, path))
+                hosted_image = responsive['main']
             except Exception as exc:
                 return {"status": "error", "reason": f"Asset upload failed: {exc}"}
-        thumbnail = thumb_image_url or hosted_image
+        thumbnail = thumb_image_url or (responsive['thumbnail'] if responsive else hosted_image)
         for key, value in (("blog-post-featured-image-photo", hosted_image),
                            ("blog-post-thumbnail-image-photo", thumbnail)):
             if fields[key].get("isRequired") and not value:
@@ -473,6 +490,14 @@ class PublishingAgent(BaseAgent):
         category = self.settings.webflow_category_id or "6759b39c1464ba09dc7d785e"
         image_alt = metadata.get("image_alt") or title
         extra_fields = {"slug": slug, "blog-post-category": category}
+        if responsive:
+            extra_fields['featured-image-srcset'] = responsive['srcset']
+            extra_fields['featured-image-width'] = responsive['width']
+            extra_fields['featured-image-height'] = responsive['height']
+            if not thumb_image_url:
+                extra_fields['thumbnail-image-srcset'] = responsive['srcset']
+                extra_fields['thumbnail-image-width'] = responsive['thumbnail_width']
+                extra_fields['thumbnail-image-height'] = responsive['thumbnail_height']
         # Keep public dates stable when Webflow later republishes an older item.
         # Manual drafts receive their date from the editor when ready to publish.
         if mode == "live" and "publication-date" in fields:
